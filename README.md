@@ -53,17 +53,19 @@ flowchart TD
 
 ## What runs now
 
-Every claim is backed by the working tree at Commit 02. Anything else is
+Every claim is backed by the working tree at Commit 03. Anything else is
 roadmap, not status.
 
 | Layer | Current, repository-backed statement |
 |---|---|
-| Workspace | `cargo build --workspace` produces the `lobster` binary (three crates) |
+| Workspace | `cargo build --workspace` produces the `lobster` binary (nine crates) |
 | Source manager | Stable file IDs, spans, 1-based line/col; unit-tested incl. Unicode columns |
 | Diagnostics | `error[E021]`-style rendering with primary/secondary spans, notes, suggestions; snapshot-tested |
-| CLI | `lobster check <file>` loads a file and reports `ok` or `LOBSTER-001`/`LOBSTER-002`; all other subcommands exit 2 as honest stubs |
+| CLI | `lobster check <file>` lexes, parses, resolves, type-checks, and reports `ok` or `E1xx`/`E2xx`/`LOBSTER-00x`; all other subcommands exit 2 as honest stubs |
 | Frontend | Lexer, Pratt parser, and span-annotated AST. `a + b * c` parses as `ADD(a, MUL(b, c))`; errors recover at `;`/`}` with `E1xx` codes; lexer/parser never panic (corpus + truncation + byte tests) |
-| Types → backend | Not implemented. Name resolution and types land in Commit 03, interpreter in 04 |
+| Sema | Single-file name resolution (E200–E203) and bidirectional type checking (E210–E218): literal adoption, no implicit conversions, cast table, exhaustiveness, 14 compile-fail snapshots |
+| Examples | Six checked-in programs, all passing `lobster check`; `tomato_shapes.lobster` exercises the expression shapes from the verified Tomato catalog |
+| Interpreter → backend | Not implemented. HIR/MIR/interpreter land in Commit 04 |
 
 ## See it, run it, inspect it
 
@@ -93,22 +95,30 @@ cargo test --workspace
 | Path | Purpose |
 |---|---|
 | [`docs/spec.md`](docs/spec.md) | Evolving language specification |
+| [`docs/language-spec.md`](docs/language-spec.md) | Normative language reference (decided vs open) |
 | [`docs/status.md`](docs/status.md) | Current facts and milestone tracker |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
 | [`docs/diagrams/`](docs/diagrams/) | Diagram sources (Mermaid) |
+| [`docs/tomato/`](docs/tomato/) | Verified Tomato ISA research, gaps, ADR 004 |
 | [`crates/lobster-source/`](crates/lobster-source/) | Source manager: files, spans, line/col |
 | [`crates/lobster-diagnostics/`](crates/lobster-diagnostics/) | Spanned diagnostics and renderer |
+| [`crates/lobster-ast/`](crates/lobster-ast/) | Span-annotated syntax tree |
+| [`crates/lobster-lexer/`](crates/lobster-lexer/) | Lexer: tokens, numbers, strings, comments |
+| [`crates/lobster-parser/`](crates/lobster-parser/) | Pratt parser with recovery |
+| [`crates/lobster-types/`](crates/lobster-types/) | Semantic type language |
+| [`crates/lobster-resolve/`](crates/lobster-resolve/) | Name resolution |
+| [`crates/lobster-sema/`](crates/lobster-sema/) | Type checker + compile-fail suite |
 | [`crates/lobster-cli/`](crates/lobster-cli/) | `lobster` command-line interface |
-| [`examples/hello.lobster`](examples/hello.lobster) | Sample program (executes from Commit 04) |
+| [`examples/`](examples/) | Checked-in programs, all passing `lobster check` |
 | [`log/`](log/) | Dated engineering journal; history, not authority |
 
 ## Roadmap
 
 Twenty milestone commits (tracked in [docs/status.md](docs/status.md)),
-worked in order. This checkout completes **Commit 02**
-(`frontend: lexer, parser, AST, and recoverable syntax diagnostics`).
-Next: **Commit 03** — name resolution, scopes, type checking, compile-fail
-tests. The flagship arc runs frontend → types → interpreter → SSA →
+worked in order. This checkout completes **Commit 03**
+(`sema: name resolution, scopes, type checking, and compile-fail tests`).
+Next: **Commit 04** — typed HIR, MIR lowering, CFG infrastructure, reference
+interpreter. The flagship arc runs frontend → types → interpreter → SSA →
 optimizer → Machine IR → x86 → differential testing → RISC-V/WASM → AArch64
 → Tomato baseline → ADD3 → LUT synthesis → Dual-LUT packing → polymorphic
 instruction synthesis → toolchain → explorer/release.

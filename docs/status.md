@@ -20,11 +20,13 @@ into implementation claims.
 | Topic | Adopted fact | Repository authority |
 |---|---|---|
 | Stage-0 language | The compiler is written in Rust. | `Cargo.toml`, `crates/*/Cargo.toml` |
-| Workspace | Three crates build to one `lobster` binary: `lobster-source`, `lobster-diagnostics`, `lobster-cli`. | `Cargo.toml`, `cargo build --workspace` |
+| Workspace | Crates build to one `lobster` binary: `lobster-source`, `lobster-diagnostics`, `lobster-lexer`, `lobster-parser`, `lobster-ast`, `lobster-types`, `lobster-resolve`, `lobster-sema`, `lobster-cli`. | `Cargo.toml`, `cargo build --workspace` |
 | Source identity | Stable `FileId`, half-open byte spans, 1-based line/character-column mapping. | `crates/lobster-source/src/lib.rs` |
 | Diagnostics | `error[E###]` rendering with primary/secondary spans, notes, suggestions; snapshot-tested. | `crates/lobster-diagnostics/src/lib.rs` |
-| CLI surface | All section-4 subcommands exist; `check` lexes, parses, and reports `E1xx` diagnostics, the rest exit 2 as declared stubs. | `crates/lobster-cli/src/main.rs`, `crates/lobster-cli/tests/cli.rs` |
-| Frontend | Lexer (`E100`–`E105`), Pratt parser (`E110`–`E112`), span-annotated AST; recovery plus corpus and no-panic tests. | `crates/lobster-lexer/`, `crates/lobster-parser/`, `crates/lobster-ast/` |
+| CLI surface | All section-4 subcommands exist; `check` lexes, parses, resolves names, type-checks, and reports `E1xx`/`E2xx` diagnostics, the rest exit 2 as declared stubs. | `crates/lobster-cli/src/main.rs`, `crates/lobster-cli/tests/cli.rs` |
+| Frontend | Lexer (`E100`–`E105`) with integer/float type suffixes and reserved-word set, Pratt parser (`E110`–`E112`) with struct patterns and let destructuring, span-annotated AST; recovery plus corpus and no-panic tests. | `crates/lobster-lexer/`, `crates/lobster-parser/`, `crates/lobster-ast/` |
+| Name resolution | Single-file resolver (`lobster-resolve`): items, locals, params, variants, `println` builtin; diagnostics E200–E203. `lobster check` runs `lobster_resolve::resolve` then `lobster_sema::check_file`; dangling variant paths resolve to the parent enum so the checker emits E218. | `crates/lobster-resolve/src/lib.rs`, `docs/adr/003-name-resolution.md` |
+| Type checking | Bidirectional checker, no inference variables; unsuffixed literals adopt context; no implicit conversions; literal range checks; cast table (E212/E216); exhaustiveness (E213); diagnostics E210–E218. 14 compile-fail corpus files plus unit tests. Deferred: definite assignment, borrow checking, const eval, generics. | `crates/lobster-sema/src/lib.rs`, `crates/lobster-sema/tests/compile-fail/`, `docs/adr/005-type-checking.md` |
 | Execution | No program executes yet. `examples/hello.lobster` is a checked-in sample awaiting the Commit 04 interpreter. | `examples/hello.lobster` |
 | Native targets | None. Backend order is macOS-first per ADR 002. | `docs/adr/002-macos-first.md` |
 | License | MIT. | `LICENSE`, crate manifests |
@@ -33,7 +35,7 @@ into implementation claims.
 
 - [x] **Commit 01** — bootstrap workspace, diagnostics framework, CI, language specification
 - [x] **Commit 02** — lexer, parser, AST, recoverable syntax diagnostics
-- [ ] **Commit 03** — name resolution, scopes, type checking, compile-fail tests
+- [x] **Commit 03** — name resolution, scopes, type checking, compile-fail tests
 - [ ] **Commit 04** — typed HIR, MIR lowering, CFG infrastructure, reference interpreter
 - [ ] **Commits 05–08** — SSA + verifier, optimizer + levels, Machine IR + regalloc infra
 - [ ] **Commits 09–13** — x86-64, differential testing, RISC-V + WASM, AArch64
