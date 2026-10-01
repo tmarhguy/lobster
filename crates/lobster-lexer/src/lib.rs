@@ -80,6 +80,26 @@ pub enum Keyword {
     As,
     /// `in`
     In,
+    /// `where`
+    Where,
+    /// Reserved for future use; using one as a name is an error today.
+    Async,
+    /// Reserved for future use.
+    Await,
+    /// Reserved for future use.
+    Dyn,
+    /// Reserved for future use.
+    Extern,
+    /// Reserved for future use.
+    Macro,
+    /// Reserved for future use.
+    Move,
+    /// Reserved for future use.
+    Ref,
+    /// Reserved for future use.
+    Try,
+    /// Reserved for future use.
+    Union,
 }
 
 impl Keyword {
@@ -116,6 +136,16 @@ impl Keyword {
             "Self" => Self::SelfType,
             "as" => Self::As,
             "in" => Self::In,
+            "where" => Self::Where,
+            "async" => Self::Async,
+            "await" => Self::Await,
+            "dyn" => Self::Dyn,
+            "extern" => Self::Extern,
+            "macro" => Self::Macro,
+            "move" => Self::Move,
+            "ref" => Self::Ref,
+            "try" => Self::Try,
+            "union" => Self::Union,
             _ => return None,
         })
     }
@@ -129,10 +159,19 @@ pub enum TokenKind {
     Ident,
     /// Reserved word.
     Keyword(Keyword),
-    /// `10`, `0xff`, `0b1010`, `1_000_000` (raw spelling in [`Token::text`]).
-    Int,
-    /// `1.5`, `2e10` (raw spelling in [`Token::text`]).
-    Float,
+    /// Integer literal, raw spelling in [`Token::text`] including any
+    /// type suffix (`10`, `0xff`, `1_000_000`, `42u64`). Use
+    /// [`Token::number_suffix`] to split the suffix.
+    Int {
+        /// Type suffix, if any.
+        suffix: Option<String>,
+    },
+    /// Float literal, raw spelling in [`Token::text`] including any
+    /// type suffix (`3.14`, `2e10`, `1.5f32`).
+    Float {
+        /// Type suffix, if any.
+        suffix: Option<String>,
+    },
     /// `"..."` with escapes resolved.
     Str(String),
     /// `'a'`, `'\n'` with escapes resolved.
@@ -211,6 +250,14 @@ pub enum TokenKind {
     Comma,
     /// `.`
     Dot,
+    /// `..` (ranges; the parser does not accept them yet)
+    DotDot,
+    /// `~` (reserved)
+    Tilde,
+    /// `#` (attributes arrive later; reserved today)
+    Hash,
+    /// `?` (reserved)
+    Question,
     /// `@` (attributes such as `@test`, `@mmio`; parsed later).
     At,
     /// `(`
@@ -238,7 +285,21 @@ pub struct Token {
     pub text: String,
 }
 
+/// Valid type suffixes for number literals (spec §1).
+const NUMBER_SUFFIXES: &[&str] = &[
+    "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64", "usize", "isize",
+];
+
 impl Token {
+    /// Type suffix of a number literal (`42u64` → `Some("u64")`).
+    /// Returns `None` for unsuffixed numbers and non-number tokens.
+    #[must_use]
+    pub fn number_suffix(&self) -> Option<&str> {
+        match &self.kind {
+            TokenKind::Int { suffix } | TokenKind::Float { suffix } => suffix.as_deref(),
+            _ => None,
+        }
+    }
     /// True for identifiers with the given spelling.
     #[must_use]
     pub fn is_ident(&self, name: &str) -> bool {
@@ -427,25 +488,32 @@ impl<'a> Lexer<'a> {
                 .chars()
                 .filter(|&c| c != '_')
                 .collect();
-            // A trailing alphanumeric run (e.g. the `2` in `0b102`) is an
-            // invalid digit for this radix, not a second token.
-            let mut bad_tail = false;
-            while self.pos < self.bytes.len()
-                && (self.bytes[self.pos].is_ascii_alphanumeric() || self.bytes[self.pos] == b'_')
-            {
-                bad_tail = true;
-                self.pos += 1;
+            let mut invalid = raw.is_empty() || u64::from_str_radix(&raw, radix).is_err();
+            let mut detail = format!("not a valid base-{radix} number");
+            let mut suffix_out = None;
+            match self.scan_number_suffix() {
+                Some(s) if NUMBER_SUFFIXES.contains(&s.as_str()) => suffix_out = Some(s),
+                Some(s) => {
+                    invalid = true;
+                    detail = format!("invalid number suffix '{s}'");
+                }
+                // A trailing digit run (e.g. the `2` in `0b102`) is an
+                // invalid digit for this radix, not a second token.
+                None => {
+                    while self.pos < self.bytes.len()
+                        && (self.bytes[self.pos].is_ascii_alphanumeric()
+                            || self.bytes[self.pos] == b'_')
+                    {
+                        invalid = true;
+                        self.pos += 1;
+                    }
+                }
             }
-            if bad_tail || raw.is_empty() || u64::from_str_radix(&raw, radix).is_err() {
+            if invalid {
                 let span = self.span_here(start, self.pos);
-                self.error(
-                    "E104",
-                    "invalid number literal",
-                    span,
-                    format!("not a valid base-{radix} number"),
-                );
+                self.error("E104", "invalid number literal", span, detail);
             }
-            self.push(TokenKind::Int, start, self.pos);
+            self.push(TokenKind::Int { suffix: suffix_out }, start, self.pos);
             return;
         }
         while self.pos < self.bytes.len()
@@ -482,22 +550,63 @@ impl<'a> Lexer<'a> {
                 }
             }
         }
+        // Type suffix (`42u64`, `1.5f32`, `2e10usize`).
+        let mut suffix_out = None;
+        let mut suffix_is_float = false;
+        match self.scan_number_suffix() {
+            Some(s) if NUMBER_SUFFIXES.contains(&s.as_str()) => {
+                suffix_is_float = s == "f32" || s == "f64";
+                suffix_out = Some(s);
+            }
+            Some(s) => {
+                let span = self.span_here(start, self.pos);
+                self.error(
+                    "E104",
+                    "invalid number literal",
+                    span,
+                    format!("invalid number suffix '{s}'"),
+                );
+            }
+            None => {}
+        }
         self.push(
-            if is_float {
-                TokenKind::Float
+            if is_float || suffix_is_float {
+                TokenKind::Float { suffix: suffix_out }
             } else {
-                TokenKind::Int
+                TokenKind::Int { suffix: suffix_out }
             },
             start,
             self.pos,
         );
     }
 
+    /// Scan an identifier-shaped run after a number (`42u64` → `u64`).
+    /// Consumes the run and returns it, or `None` when the next char
+    /// cannot start a suffix.
+    fn scan_number_suffix(&mut self) -> Option<String> {
+        let is_start = matches!(
+            self.bytes.get(self.pos),
+            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_')
+        );
+        if !is_start {
+            return None;
+        }
+        let start = self.pos;
+        while self.pos < self.bytes.len()
+            && (self.bytes[self.pos].is_ascii_alphanumeric() || self.bytes[self.pos] == b'_')
+        {
+            self.pos += 1;
+        }
+        Some(self.text[start..self.pos].to_string())
+    }
+
     /// Decode one escape starting after the backslash. Returns the char and
-    /// the byte index just past the escape.
+    /// the byte index just past the escape. Malformed escapes report E105
+    /// and recover with U+FFFD so lexing always continues.
     fn escape(&mut self, backslash: usize) -> Option<(char, usize)> {
         // `backslash` is ASCII, so `backslash + 1` is a char boundary.
-        let e = self.text.get(backslash + 1..)?.chars().next()?;
+        let rest = self.text.get(backslash + 1..)?;
+        let e = rest.chars().next()?;
         let simple = match e {
             'n' => Some('\n'),
             't' => Some('\t'),
@@ -511,6 +620,12 @@ impl<'a> Lexer<'a> {
         if let Some(c) = simple {
             return Some((c, backslash + 1 + e.len_utf8()));
         }
+        if e == 'x' {
+            return Some(self.hex_escape(backslash));
+        }
+        if e == 'u' {
+            return Some(self.unicode_escape(backslash));
+        }
         let span = self.span_here(backslash, backslash + 1 + e.len_utf8());
         self.error(
             "E105",
@@ -520,6 +635,86 @@ impl<'a> Lexer<'a> {
         );
         // Recover: keep the escaped char literally.
         Some((e, backslash + 1 + e.len_utf8()))
+    }
+
+    /// Decode `\xHH`: exactly two hex digits, ASCII only (spec §1).
+    fn hex_escape(&mut self, backslash: usize) -> (char, usize) {
+        let rest = &self.text[backslash + 2..];
+        let digits: String = rest.chars().take(2).collect();
+        let ok = digits.len() == 2 && digits.chars().all(|c| c.is_ascii_hexdigit());
+        let value = u32::from_str_radix(&digits, 16).unwrap_or(0xFFFD);
+        // `\xHH` in a char/string escape must be ASCII; higher values need `\u{}`.
+        if !ok || value > 0x7F {
+            let end = backslash + 2 + digits.len();
+            let span = self.span_here(backslash, end);
+            self.error(
+                "E105",
+                "invalid escape",
+                span,
+                if ok {
+                    "'\\x' escapes must be ASCII (use '\\u{...}' for the rest)".to_string()
+                } else {
+                    "expected two hex digits after '\\x'".to_string()
+                },
+            );
+            return ('\u{FFFD}', end);
+        }
+        (char::from_u32(value).unwrap_or('\u{FFFD}'), backslash + 4)
+    }
+
+    /// Decode `\u{H…}`: one to six hex digits in braces, a Unicode scalar.
+    fn unicode_escape(&mut self, backslash: usize) -> (char, usize) {
+        if self
+            .text
+            .get(backslash + 2..)
+            .and_then(|s| s.chars().next())
+            != Some('{')
+        {
+            let span = self.span_here(backslash, backslash + 2);
+            self.error(
+                "E105",
+                "invalid escape",
+                span,
+                "expected '\\u{H...}' with braces".to_string(),
+            );
+            return ('\u{FFFD}', backslash + 2);
+        }
+        // Bounded scan: stop at `}`, newline, or after a few chars so a
+        // missing brace cannot swallow the rest of the file.
+        let mut digits = String::new();
+        let mut closed = false;
+        let mut cur = backslash + 3; // past `\u{`
+        while let Some(c) = self.text.get(cur..).and_then(|s| s.chars().next()) {
+            if c == '}' {
+                closed = true;
+                cur += 1;
+                break;
+            }
+            if c == '\n' || cur - (backslash + 3) > 8 {
+                break;
+            }
+            digits.push(c);
+            cur += c.len_utf8();
+        }
+        let valid = closed
+            && (1..=6).contains(&digits.len())
+            && digits.chars().all(|c| c.is_ascii_hexdigit())
+            && u32::from_str_radix(&digits, 16)
+                .ok()
+                .and_then(char::from_u32)
+                .is_some();
+        if !valid {
+            let span = self.span_here(backslash, cur);
+            self.error(
+                "E105",
+                "invalid escape",
+                span,
+                format!("invalid unicode escape '\\u{{{digits}}}'"),
+            );
+            return ('\u{FFFD}', cur);
+        }
+        let value = u32::from_str_radix(&digits, 16).unwrap_or(0xFFFD);
+        (char::from_u32(value).unwrap_or('\u{FFFD}'), cur)
     }
 
     fn lex_string(&mut self) {
@@ -656,6 +851,7 @@ impl<'a> Lexer<'a> {
             (b'-', Some(b'>')) => Some(TokenKind::Arrow),
             (b'=', Some(b'>')) => Some(TokenKind::FatArrow),
             (b':', Some(b':')) => Some(TokenKind::ColonColon),
+            (b'.', Some(b'.')) => Some(TokenKind::DotDot),
             _ => None,
         };
         if let Some(kind) = double {
@@ -680,6 +876,9 @@ impl<'a> Lexer<'a> {
             b';' => Some(TokenKind::Semi),
             b',' => Some(TokenKind::Comma),
             b'.' => Some(TokenKind::Dot),
+            b'~' => Some(TokenKind::Tilde),
+            b'#' => Some(TokenKind::Hash),
+            b'?' => Some(TokenKind::Question),
             b'@' => Some(TokenKind::At),
             b'(' => Some(TokenKind::OpenParen),
             b')' => Some(TokenKind::CloseParen),
@@ -732,7 +931,7 @@ mod tests {
         assert!(matches!(ks[5], TokenKind::Keyword(Keyword::Let)));
         assert!(matches!(ks[6], TokenKind::Keyword(Keyword::Mut)));
         assert!(matches!(ks[8], TokenKind::Eq));
-        assert!(matches!(ks[9], TokenKind::Int));
+        assert!(matches!(ks[9], TokenKind::Int { .. }));
         assert!(matches!(ks[10], TokenKind::Semi));
     }
 
@@ -745,8 +944,8 @@ mod tests {
             texts,
             ["0xff", "0b1010", "0o17", "1_000_000", "3.14", "2e10"]
         );
-        assert!(matches!(out.tokens[4].kind, TokenKind::Float));
-        assert!(matches!(out.tokens[5].kind, TokenKind::Float));
+        assert!(matches!(out.tokens[4].kind, TokenKind::Float { .. }));
+        assert!(matches!(out.tokens[5].kind, TokenKind::Float { .. }));
     }
 
     #[test]
@@ -831,5 +1030,83 @@ mod tests {
         let (sm, out) = lex_text("let xy = 1;");
         let t = &out.tokens[1];
         assert_eq!(sm.slice(t.span), Some("xy"));
+    }
+
+    #[test]
+    fn number_suffixes() {
+        let (_, out) = lex_text("42u64 10i32 7usize 1.5f32 2e10f64 0xffu8");
+        assert!(out.diagnostics.is_empty());
+        let suffixes: Vec<_> = out.tokens.iter().map(|t| t.number_suffix()).collect();
+        assert_eq!(
+            suffixes,
+            [
+                Some("u64"),
+                Some("i32"),
+                Some("usize"),
+                Some("f32"),
+                Some("f64"),
+                Some("u8")
+            ]
+        );
+        // `42f32` without a fraction is still a float.
+        let (_, out) = lex_text("42f32");
+        assert!(matches!(out.tokens[0].kind, TokenKind::Float { .. }));
+        assert_eq!(out.tokens[0].number_suffix(), Some("f32"));
+    }
+
+    #[test]
+    fn bad_suffix_reports_e104() {
+        let (_, out) = lex_text("42qux");
+        assert!(out
+            .diagnostics
+            .iter()
+            .any(|d| d.code.as_ref().is_some_and(|c| c.0 == "E104")));
+        // One token, not two: the run is consumed as the bad suffix.
+        assert_eq!(out.tokens.len(), 1);
+    }
+
+    #[test]
+    fn hex_and_unicode_escapes() {
+        let (_, out) = lex_text(r#"'\x41' "A\x41" '\u{1F600}'"#);
+        assert!(out.diagnostics.is_empty());
+        assert!(matches!(out.tokens[0].kind, TokenKind::Char('A')));
+        assert!(matches!(&out.tokens[1].kind, TokenKind::Str(s) if s == "AA"));
+        assert!(matches!(out.tokens[2].kind, TokenKind::Char('\u{1F600}')));
+    }
+
+    #[test]
+    fn bad_escapes_report_e105_and_recover() {
+        for text in [
+            r"'\x4'",
+            r"'\xFF'",
+            r"'\u{}'",
+            r"'\u{D800}'",
+            r"'\q'",
+            r"'\u{0041",
+        ] {
+            let (_, out) = lex_text(text);
+            assert!(
+                out.diagnostics
+                    .iter()
+                    .any(|d| d.code.as_ref().is_some_and(|c| c.0 == "E105")),
+                "no E105 for {text}"
+            );
+        }
+    }
+
+    #[test]
+    fn reserved_future_keywords_are_keywords_not_idents() {
+        let ks = kinds("async await dyn extern macro move ref try union where");
+        assert!(ks.iter().all(|k| matches!(k, TokenKind::Keyword(_))));
+        assert_eq!(ks.len(), 10);
+    }
+
+    #[test]
+    fn new_punctuation_lexes() {
+        let ks = kinds("~ # ? ..");
+        assert!(matches!(ks[0], TokenKind::Tilde));
+        assert!(matches!(ks[1], TokenKind::Hash));
+        assert!(matches!(ks[2], TokenKind::Question));
+        assert!(matches!(ks[3], TokenKind::DotDot));
     }
 }
