@@ -96,6 +96,29 @@ fn run_dump_mir_prints_cfg() {
 }
 
 #[test]
+fn run_dump_ssa_prints_phis() {
+    let flow = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/control_flow.lobster"
+    );
+    lobster()
+        .args(["run", flow, "--dump-ssa"])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("phi"));
+}
+
+#[test]
+fn run_verify_ssa_reports_ok() {
+    let hello = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/hello.lobster");
+    lobster()
+        .args(["run", hello, "--verify-ssa"])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("ssa ok"));
+}
+
+#[test]
 fn run_type_error_fails() {
     let mut f = tempfile::NamedTempFile::with_suffix(".lobster").unwrap();
     writeln!(f, "fn main() {{\n    let x: i32 = true;\n}}").unwrap();
