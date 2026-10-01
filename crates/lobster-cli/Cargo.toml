@@ -21,6 +21,7 @@ lobster-sema = { path = "../lobster-sema" }
 lobster-hir = { path = "../lobster-hir" }
 lobster-mir = { path = "../lobster-mir" }
 lobster-interp = { path = "../lobster-interp" }
+lobster-ssa = { path = "../lobster-ssa" }
 
 [dev-dependencies]
 assert_cmd = "2"

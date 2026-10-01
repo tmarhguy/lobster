@@ -1,9 +1,9 @@
 //! `lobster` command-line interface.
 //!
-//! Commit 04 scope: real `check` (lex, parse, resolve, type-check) and real
-//! `run` (lower HIR/MIR and execute the reference interpreter). Every other
-//! subcommand is an honest stub: it exits with code 2 and says so — it never
-//! pretends to succeed.
+//! Commit 05 scope: real `check` (lex, parse, resolve, type-check) and real
+//! `run` (lower HIR/MIR/SSA, verify SSA, execute the reference interpreter).
+//! Every other subcommand is an honest stub: it exits with code 2 and says
+//! so — it never pretends to succeed.
 
 use clap::{Parser, Subcommand};
 use lobster_diagnostics::{Diagnostic, Label, Renderer};
@@ -46,6 +46,12 @@ enum Command {
         /// Print the lowered MIR CFG and exit without running.
         #[arg(long)]
         dump_mir: bool,
+        /// Print the SSA CFG (after verification) and exit without running.
+        #[arg(long)]
+        dump_ssa: bool,
+        /// Verify the SSA CFG, report `ssa ok`, and exit without running.
+        #[arg(long)]
+        verify_ssa: bool,
     },
     /// Run tests.
     Test {},
@@ -131,7 +137,7 @@ fn cmd_check(file: PathBuf) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn cmd_run(file: PathBuf, dump_mir: bool) -> ExitCode {
+fn cmd_run(file: PathBuf, dump_mir: bool, dump_ssa: bool, verify_ssa: bool) -> ExitCode {
     let display = file.display().to_string();
     let text = match std::fs::read_to_string(&file) {
         Ok(t) => t,
@@ -191,6 +197,27 @@ fn cmd_run(file: PathBuf, dump_mir: bool) -> ExitCode {
         print!("{}", lobster_mir::dump(&mir));
         return ExitCode::SUCCESS;
     }
+    // SSA construction always runs: it must verify before execution so a
+    // malformed CFG fails closed instead of executing.
+    let ssa = lobster_ssa::build(&mir);
+    if let Err(errors) = lobster_ssa::verify(&ssa) {
+        for e in &errors {
+            eprintln!("error[SSA-verify]: {e}");
+        }
+        eprintln!(
+            "run failed: SSA verification ({} error(s)) in {display}",
+            errors.len()
+        );
+        return ExitCode::from(1);
+    }
+    if dump_ssa {
+        print!("{}", lobster_ssa::dump(&ssa));
+        return ExitCode::SUCCESS;
+    }
+    if verify_ssa {
+        println!("ssa ok: {display}");
+        return ExitCode::SUCCESS;
+    }
     match lobster_interp::run_main(&mir) {
         Ok(outcome) => {
             for line in &outcome.printed {
@@ -225,7 +252,12 @@ fn main() -> ExitCode {
         Command::New { .. } => not_implemented("lobster new"),
         Command::Check { file } => cmd_check(file),
         Command::Build { .. } => not_implemented("lobster build"),
-        Command::Run { file, dump_mir } => cmd_run(file, dump_mir),
+        Command::Run {
+            file,
+            dump_mir,
+            dump_ssa,
+            verify_ssa,
+        } => cmd_run(file, dump_mir, dump_ssa, verify_ssa),
         Command::Test {} => not_implemented("lobster test"),
         Command::Bench {} => not_implemented("lobster bench"),
         Command::Fmt { .. } => not_implemented("lobster fmt"),
