@@ -1,0 +1,14 @@
+%% Lobster compilation pipeline — diagram source for README "Architecture at a
+%% glance". Rendered by GitHub from the ```mermaid block in README.md.
+%% Convention mirrors tomato docs/diagrams/*.mmd: edit here, copy into README.
+flowchart TD
+    SRC["LOBSTER SOURCE"] --> SM["Source Manager"] --> LP["Lexer / Parser"] --> AST["AST"] --> NR["Name Resolution"] --> TC["Type Checker"] --> HIR["Typed HIR"] --> MIR["MIR / CFG"] --> SSA["SSA IR"] --> OPT["Generic Optimization"] --> DAG["Expression / DAG IR"] --> MCH["Machine IR"]
+    MCH --> X86["x86-64"]
+    MCH --> AARCH["AArch64"]
+    MCH --> RISCV["RISC-V"]
+    MCH --> WASM["WebAssembly"]
+    MCH --> TOM["Tomato32"]
+    TOM --> SYN["Tomato Structural Synthesis"] --> LUT["LUT / ADD / Carry Mapping"] --> TMC["Tomato Machine Code"]
+
+    classDef tomato fill:#fff1f1,stroke:#DC2626,color:#7f1d1d;
+    class TOM,SYN,LUT,TMC tomato;
