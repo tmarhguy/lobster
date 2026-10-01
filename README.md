@@ -56,7 +56,7 @@ flowchart TD
 
 ## What runs now
 
-Every claim is backed by the working tree at Commit 01. Anything else is
+Every claim is backed by the working tree at Commit 02. Anything else is
 roadmap, not status.
 
 | Layer | Current, repository-backed statement |
@@ -65,7 +65,8 @@ roadmap, not status.
 | Source manager | Stable file IDs, spans, 1-based line/col; unit-tested incl. Unicode columns |
 | Diagnostics | `error[E021]`-style rendering with primary/secondary spans, notes, suggestions; snapshot-tested |
 | CLI | `lobster check <file>` loads a file and reports `ok` or `LOBSTER-001`/`LOBSTER-002`; all other subcommands exit 2 as honest stubs |
-| Parser → backend | Not implemented. Parsing lands in Commit 02, types in 03, interpreter in 04 |
+| Frontend | Lexer, Pratt parser, and span-annotated AST. `a + b * c` parses as `ADD(a, MUL(b, c))`; errors recover at `;`/`}` with `E1xx` codes; lexer/parser never panic (corpus + truncation + byte tests) |
+| Types → backend | Not implemented. Name resolution and types land in Commit 03, interpreter in 04 |
 
 ## See it, run it, inspect it
 
@@ -108,10 +109,10 @@ cargo test --workspace
 ## Roadmap
 
 Twenty milestone commits ([full list](file.md#114-twenty-primary-github-milestone-commits)),
-worked in order. This checkout completes **Commit 01**
-(`bootstrap workspace, diagnostics framework, CI, and language specification`).
-Next: **Commit 02** — lexer, Pratt parser, AST, recoverable syntax
-diagnostics. The flagship arc runs frontend → types → interpreter → SSA →
+worked in order. This checkout completes **Commit 02**
+(`frontend: lexer, parser, AST, and recoverable syntax diagnostics`).
+Next: **Commit 03** — name resolution, scopes, type checking, compile-fail
+tests. The flagship arc runs frontend → types → interpreter → SSA →
 optimizer → Machine IR → x86 → differential testing → RISC-V/WASM → AArch64
 → Tomato baseline → ADD3 → LUT synthesis → Dual-LUT packing → polymorphic
 instruction synthesis → toolchain → explorer/release.

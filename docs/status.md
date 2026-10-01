@@ -27,7 +27,8 @@ describes what the repository proves; it does not turn roadmap items in
 | Workspace | Three crates build to one `lobster` binary: `lobster-source`, `lobster-diagnostics`, `lobster-cli`. | `Cargo.toml`, `cargo build --workspace` |
 | Source identity | Stable `FileId`, half-open byte spans, 1-based line/character-column mapping. | `crates/lobster-source/src/lib.rs` |
 | Diagnostics | `error[E###]` rendering with primary/secondary spans, notes, suggestions; snapshot-tested. | `crates/lobster-diagnostics/src/lib.rs` |
-| CLI surface | All section-4 subcommands exist; only `check` is functional, the rest exit 2 as declared stubs. | `crates/lobster-cli/src/main.rs`, `crates/lobster-cli/tests/cli.rs` |
+| CLI surface | All section-4 subcommands exist; `check` lexes, parses, and reports `E1xx` diagnostics, the rest exit 2 as declared stubs. | `crates/lobster-cli/src/main.rs`, `crates/lobster-cli/tests/cli.rs` |
+| Frontend | Lexer (`E100`–`E105`), Pratt parser (`E110`–`E112`), span-annotated AST; recovery plus corpus and no-panic tests. | `crates/lobster-lexer/`, `crates/lobster-parser/`, `crates/lobster-ast/` |
 | Execution | No program executes yet. `examples/hello.lobster` is a checked-in sample awaiting the Commit 04 interpreter. | `examples/hello.lobster` |
 | Native targets | None. Backend order is macOS-first per ADR 002 (deviates from `file.md` section 43). | `docs/adr/002-macos-first.md` |
 | License | MIT. | `LICENSE`, crate manifests |
@@ -35,7 +36,7 @@ describes what the repository proves; it does not turn roadmap items in
 ## Milestone tracker
 
 - [x] **Commit 01** — bootstrap workspace, diagnostics framework, CI, language specification
-- [ ] **Commit 02** — lexer, parser, AST, recoverable syntax diagnostics
+- [x] **Commit 02** — lexer, parser, AST, recoverable syntax diagnostics
 - [ ] **Commit 03** — name resolution, scopes, type checking, compile-fail tests
 - [ ] **Commit 04** — typed HIR, MIR lowering, CFG infrastructure, reference interpreter
 - [ ] **Commits 05–08** — SSA + verifier, optimizer + levels, Machine IR + regalloc infra
