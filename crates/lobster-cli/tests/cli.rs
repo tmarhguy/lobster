@@ -119,6 +119,26 @@ fn run_verify_ssa_reports_ok() {
 }
 
 #[test]
+fn run_opt_level_zero_runs_unoptimized() {
+    let hello = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/hello.lobster");
+    lobster()
+        .args(["run", hello, "--opt-level", "0"])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("55"));
+}
+
+#[test]
+fn run_bad_opt_level_is_lobster003() {
+    let hello = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/hello.lobster");
+    lobster()
+        .args(["run", hello, "--opt-level", "9"])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("LOBSTER-003"));
+}
+
+#[test]
 fn run_type_error_fails() {
     let mut f = tempfile::NamedTempFile::with_suffix(".lobster").unwrap();
     writeln!(f, "fn main() {{\n    let x: i32 = true;\n}}").unwrap();
