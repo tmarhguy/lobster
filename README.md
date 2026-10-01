@@ -53,18 +53,19 @@ flowchart TD
 
 ## What runs now
 
-Every claim is backed by the working tree at Commit 04. Anything else is
+Every claim is backed by the working tree at Commit 05. Anything else is
 roadmap, not status.
 
 | Layer | Current, repository-backed statement |
 |---|---|
-| Workspace | `cargo build --workspace` produces the `lobster` binary (twelve crates) |
+| Workspace | `cargo build --workspace` produces the `lobster` binary (thirteen crates) |
 | Source manager | Stable file IDs, spans, 1-based line/col; unit-tested incl. Unicode columns |
 | Diagnostics | `error[E021]`-style rendering with primary/secondary spans, notes, suggestions; snapshot-tested |
-| CLI | `lobster check <file>` lexes, parses, resolves, type-checks, and reports `ok` or `E1xx`/`E2xx`/`LOBSTER-00x`; `lobster run <file> [--dump-mir]` executes `main` via the reference interpreter and reports `TRAP-*` on failure; all other subcommands exit 2 as honest stubs |
+| CLI | `lobster check <file>` lexes, parses, resolves, type-checks, and reports `ok` or `E1xx`/`E2xx`/`LOBSTER-00x`; `lobster run <file> [--dump-mir --dump-ssa --verify-ssa]` verifies SSA (`SSA-verify`, fail closed) then executes `main` via the reference interpreter and reports `TRAP-*` on failure; all other subcommands exit 2 as honest stubs |
 | Frontend | Lexer, Pratt parser, and span-annotated AST. `a + b * c` parses as `ADD(a, MUL(b, c))`; errors recover at `;`/`}` with `E1xx` codes; lexer/parser never panic (corpus + truncation + byte tests) |
 | Sema | Single-file name resolution (E200–E203) and bidirectional type checking (E210–E218): literal adoption, no implicit conversions, cast table, exhaustiveness, 14 compile-fail snapshots |
 | HIR/MIR | Typed desugared HIR (`&&`/`||` → `if`); MIR CFG with explicit branches, `match` dispatch, index loops for `for`; `--dump-mir` prints the CFG |
+| SSA | Single-assignment CFG with one phi per local at every join (`--dump-ssa`); verifier checks structure, single-def, phi/predecessor agreement, operand and operator types; every `run` verifies SSA first and fails closed on `SSA-verify` errors |
 | Interpreter | Strict spec §§4–5 execution: wrapping ints, trapping `/`/`%` by zero, masked shifts, saturating `float as int`, trapping `u32 as char`, honest `TRAP-REF` for `&`/`*` |
 | Examples | Six checked-in programs, all passing `lobster check` and `lobster run`; `tomato_shapes.lobster` exercises the expression shapes from the verified Tomato catalog |
 
@@ -113,6 +114,7 @@ cargo test --workspace
 | [`crates/lobster-hir/`](crates/lobster-hir/) | Typed desugared HIR (Commit 04) |
 | [`crates/lobster-mir/`](crates/lobster-mir/) | CFG / basic blocks (Commit 04) |
 | [`crates/lobster-interp/`](crates/lobster-interp/) | Reference interpreter (Commit 04) |
+| [`crates/lobster-ssa/`](crates/lobster-ssa/) | SSA IR + verifier (Commit 05) |
 | [`crates/lobster-cli/`](crates/lobster-cli/) | `lobster` command-line interface |
 | [`examples/`](examples/) | Checked-in programs, all passing `lobster check` and `lobster run` |
 | [`log/`](log/) | Dated engineering journal; history, not authority |
@@ -120,9 +122,9 @@ cargo test --workspace
 ## Roadmap
 
 Twenty milestone commits (tracked in [docs/status.md](docs/status.md)),
-worked in order. This checkout completes **Commit 04**
-(`typed HIR, MIR lowering, CFG infrastructure, reference interpreter`).
-Next: **Commit 05** — SSA + verifier. The flagship arc runs frontend → types → interpreter → SSA →
+worked in order. This checkout completes **Commit 05**
+(`SSA + verifier`).
+Next: **Commit 06** — optimizer + levels. The flagship arc runs frontend → types → interpreter → SSA →
 optimizer → Machine IR → x86 → differential testing → RISC-V/WASM → AArch64
 → Tomato baseline → ADD3 → LUT synthesis → Dual-LUT packing → polymorphic
 instruction synthesis → toolchain → explorer/release.
