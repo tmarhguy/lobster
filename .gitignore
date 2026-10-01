@@ -29,3 +29,6 @@
 *.orig
 *.rej
 *.bak
+
+# Generated documentation output (see `make docs`; never committed).
+/build/
