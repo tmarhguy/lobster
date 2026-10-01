@@ -93,16 +93,27 @@ fn cmd_check(file: PathBuf) -> ExitCode {
             "empty source file",
             Label::primary(span, "nothing to check here"),
         )
-        .with_note("Commit 01 only loads files; parsing lands in Commit 02");
+        .with_note("write a Lobster program starting from examples/hello.lobster");
         eprint!("{}", Renderer::new(&sources).render(&d));
         return ExitCode::from(1);
     }
+    let text = f.text().to_string();
+    let lexed = lobster_lexer::lex(&sources, id, &text);
+    let parsed = lobster_parser::parse(id, &lexed.tokens);
+    let renderer = Renderer::new(&sources);
+    for d in lexed.diagnostics.iter().chain(parsed.diagnostics.iter()) {
+        eprint!("{}", renderer.render(d));
+    }
+    if !lexed.diagnostics.is_empty() || !parsed.diagnostics.is_empty() {
+        let n = lexed.diagnostics.len() + parsed.diagnostics.len();
+        eprintln!("check failed: {n} error(s) in {display}");
+        return ExitCode::from(1);
+    }
     println!(
-        "ok: {display} ({} bytes, {} lines)",
-        f.text().len(),
+        "ok: {display} ({} items, {} lines)",
+        parsed.file.items.len(),
         f.line_count()
     );
-    println!("note: full parsing and type-checking land in Commits 02-03");
     ExitCode::SUCCESS
 }
 

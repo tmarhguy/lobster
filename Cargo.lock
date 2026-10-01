@@ -191,12 +191,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
+name = "lobster-ast"
+version = "0.1.0"
+dependencies = [
+ "lobster-source",
+]
+
+[[package]]
 name = "lobster-cli"
 version = "0.1.0"
 dependencies = [
  "assert_cmd",
  "clap",
  "lobster-diagnostics",
+ "lobster-lexer",
+ "lobster-parser",
  "lobster-source",
  "predicates",
  "tempfile",
@@ -208,6 +217,24 @@ version = "0.1.0"
 dependencies = [
  "lobster-source",
  "insta",
+]
+
+[[package]]
+name = "lobster-lexer"
+version = "0.1.0"
+dependencies = [
+ "lobster-diagnostics",
+ "lobster-source",
+]
+
+[[package]]
+name = "lobster-parser"
+version = "0.1.0"
+dependencies = [
+ "lobster-ast",
+ "lobster-diagnostics",
+ "lobster-lexer",
+ "lobster-source",
 ]
 
 [[package]]
