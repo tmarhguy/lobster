@@ -23,7 +23,7 @@
 
 use lobster_ast::{BinOp, UnOp};
 use lobster_mir::{BlockId, Const_, Local, MirFunc, MirProgram};
-use lobster_source::Span;
+use lobster_source::{FileId, Span};
 use lobster_types::{IntTy, Ty};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
@@ -85,6 +85,11 @@ pub struct Phi {
     pub origin: Local,
     /// One arm per predecessor, in predecessor-block order.
     pub arms: Vec<(BlockId, SsaOperand)>,
+    /// Location for destruct-emitted copies (join block's first statement,
+    /// else first predecessor statement, else `None`). Copies never trap,
+    /// so this span never renders; [`destruct`] falls back to a synthetic
+    /// span only when no statement exists anywhere nearby.
+    pub span: Option<Span>,
 }
 
 /// An operand: an SSA value, a constant, or `Undef`.
@@ -283,6 +288,33 @@ pub fn build(mir: &MirProgram) -> SsaProgram {
         funcs,
         structs: mir.structs.clone(),
         enums: mir.enums.clone(),
+    }
+}
+
+/// Synthetic span for generated code (phi copies, unreachable backstops).
+/// Copies only move already-computed values, so they never trap and this
+/// span never renders; it exists because MIR statements require one.
+fn synthetic_span() -> Span {
+    Span::new(FileId(0), 0, 0)
+}
+
+/// Convert SSA back to MIR by placing one copy per phi arm on its edge.
+///
+/// Critical edges (predecessor with several successors) are split with a
+/// fresh block so the copy runs only when that edge runs. `Undef` operands
+/// read a dedicated never-assigned local, preserving the dynamic `Uninit`
+/// trap exactly like MIR. Total: anything [`verify`] would reject still
+/// lowers to *something* runnable (usually trapping) instead of panicking.
+#[must_use]
+pub fn destruct(ssa: &SsaProgram) -> MirProgram {
+    let mut funcs = HashMap::new();
+    for (name, f) in &ssa.funcs {
+        funcs.insert(name.clone(), destruct_func(f));
+    }
+    MirProgram {
+        funcs,
+        structs: ssa.structs.clone(),
+        enums: ssa.enums.clone(),
     }
 }
 
@@ -493,6 +525,28 @@ fn successors_of(term: &lobster_mir::Terminator) -> Vec<BlockId> {
     }
 }
 
+/// Span of a MIR statement (every statement carries one).
+fn stmt_span(stmt: &lobster_mir::MirStmt) -> Span {
+    match stmt {
+        lobster_mir::MirStmt::Assign { span, .. }
+        | lobster_mir::MirStmt::Call { span, .. }
+        | lobster_mir::MirStmt::Print { span, .. }
+        | lobster_mir::MirStmt::SetField { span, .. } => *span,
+    }
+}
+
+/// Location for a join block's phis: first statement of the join, else
+/// first statement of the first predecessor that has one, else `None`.
+fn join_span(mir: &MirFunc, preds: &[Vec<BlockId>], join: usize) -> Option<Span> {
+    if let Some(span) = mir.blocks.get(join)?.stmts.first().map(stmt_span) {
+        return Some(span);
+    }
+    preds
+        .get(join)?
+        .iter()
+        .find_map(|p| mir.blocks.get(p.0 as usize)?.stmts.first().map(stmt_span))
+}
+
 fn reverse_postorder(entry: BlockId, blocks: &[lobster_mir::MirBlock]) -> Vec<BlockId> {
     let n = blocks.len();
     let mut visited = vec![false; n];
@@ -616,6 +670,7 @@ fn build_func(mir: &MirFunc) -> SsaFunc {
 
     let mut blocks = Vec::with_capacity(n);
     for (i, skel) in phi_skel.into_iter().enumerate() {
+        let span = join_span(mir, &preds, i);
         let phis = skel
             .into_iter()
             .map(|(origin, dst, ty)| {
@@ -635,6 +690,7 @@ fn build_func(mir: &MirFunc) -> SsaFunc {
                     ty,
                     origin,
                     arms,
+                    span,
                 }
             })
             .collect();
@@ -653,6 +709,330 @@ fn build_func(mir: &MirFunc) -> SsaFunc {
         value_names: builder.names,
         blocks,
         entry: mir.entry,
+    }
+}
+
+fn destruct_func(ssa: &SsaFunc) -> MirFunc {
+    use lobster_mir::{MirBlock, MirFunc, MirStmt as MirS};
+    let n = ssa.blocks.len();
+    // Identity mapping: MIR local `i` holds SSA value `i`.
+    let undef = Local(ssa.values.len() as u32);
+    let mut locals = ssa.values.clone();
+    locals.push(Ty::Error);
+    let mut local_names = ssa.value_names.clone();
+    local_names.push("undef".to_string());
+
+    let mut succs: Vec<Vec<BlockId>> = vec![Vec::new(); n];
+    for (i, b) in ssa.blocks.iter().enumerate() {
+        for s in successors_of_term(&b.term) {
+            if (s.0 as usize) < n {
+                succs[i].push(s);
+            }
+        }
+    }
+
+    // Map statements and terminators first; phi copies land on edges below.
+    let mut blocks: Vec<MirBlock> = Vec::with_capacity(n);
+    for b in &ssa.blocks {
+        let stmts = b.stmts.iter().map(|s| destruct_stmt(s, undef)).collect();
+        blocks.push(MirBlock {
+            stmts,
+            term: destruct_term(&b.term, undef),
+        });
+    }
+
+    // One copy per phi arm, grouped by (predecessor, successor) edge.
+    // Dead phis (dst never used) emit no copies: a copy reads its arm
+    // operand, and reading `Undef` traps — but the original program never
+    // reads a dead value, so emitting the copy would invent a trap.
+    let live = live_values(ssa);
+    let mut edge_copies: HashMap<(u32, u32), Vec<MirS>> = HashMap::new();
+    let mut edge_order: Vec<(u32, u32)> = Vec::new();
+    for (s, b) in ssa.blocks.iter().enumerate() {
+        for phi in &b.phis {
+            if !live.contains(&phi.dst.0) {
+                continue;
+            }
+            let span = copy_span(ssa, s, &phi.span);
+            for (pred, op) in &phi.arms {
+                let key = (pred.0, s as u32);
+                if !edge_copies.contains_key(&key) {
+                    edge_order.push(key);
+                }
+                edge_copies.entry(key).or_default().push(MirS::Assign {
+                    dst: Local(phi.dst.0),
+                    rv: lobster_mir::Rvalue::Use(destruct_operand(op, undef)),
+                    span,
+                });
+            }
+        }
+    }
+    for (p, s) in edge_order {
+        let copies = edge_copies.remove(&(p, s)).unwrap_or_default();
+        if copies.is_empty() || (p as usize) >= blocks.len() {
+            continue;
+        }
+        if succs.get(p as usize).is_some_and(|ss| ss.len() == 1) {
+            // Single-successor edge: the copy runs whenever `p` runs.
+            blocks[p as usize].stmts.extend(copies);
+            continue;
+        }
+        // Critical edge: split it so copies run only on this edge.
+        let split = BlockId(blocks.len() as u32);
+        retarget_edge(&mut blocks[p as usize].term, BlockId(s), split);
+        blocks.push(MirBlock {
+            stmts: copies,
+            term: lobster_mir::Terminator::Goto(BlockId(s)),
+        });
+    }
+
+    MirFunc {
+        name: ssa.name.clone(),
+        params: ssa.params.iter().map(|v| Local(v.0)).collect(),
+        ret: ssa.ret.clone(),
+        locals,
+        local_names,
+        blocks,
+        entry: ssa.entry,
+    }
+}
+
+/// Values read anywhere (arms, rvalues, calls, prints, terminators).
+fn live_values(func: &SsaFunc) -> HashSet<u32> {
+    let mut live = HashSet::new();
+    let mut mark = |op: &SsaOperand| {
+        if let SsaOperand::Value(v) = op {
+            live.insert(v.0);
+        }
+    };
+    for block in &func.blocks {
+        for phi in &block.phis {
+            for (_, op) in &phi.arms {
+                mark(op);
+            }
+        }
+        for stmt in &block.stmts {
+            match stmt {
+                SsaStmt::Assign { rv, .. } => {
+                    for o in ssa_rvalue_operands(rv) {
+                        mark(o);
+                    }
+                }
+                SsaStmt::Call { target, args, .. } => {
+                    if let SsaCallTarget::Value(o) = target {
+                        mark(o);
+                    }
+                    for a in args {
+                        mark(a);
+                    }
+                }
+                SsaStmt::Print { values, .. } => {
+                    for v in values {
+                        mark(v);
+                    }
+                }
+                SsaStmt::SetField { base, value, .. } => {
+                    mark(base);
+                    mark(value);
+                }
+            }
+        }
+        match &block.term {
+            SsaTerm::Branch { cond, .. } => mark(cond),
+            SsaTerm::Return(Some(o)) => mark(o),
+            _ => {}
+        }
+    }
+    live
+}
+
+fn ssa_rvalue_operands(rv: &SsaRvalue) -> Vec<&SsaOperand> {
+    match rv {
+        SsaRvalue::Use(o) => vec![o],
+        SsaRvalue::Binary { l, r, .. } => vec![l, r],
+        SsaRvalue::Unary { v, .. } => vec![v],
+        SsaRvalue::Cast { v, .. } => vec![v],
+        SsaRvalue::Tuple(es) => es.iter().collect(),
+        SsaRvalue::Field { base, .. } => vec![base],
+        SsaRvalue::Enum { payload, .. } => payload.iter().collect(),
+        SsaRvalue::Discriminant(b) | SsaRvalue::SliceLen(b) => vec![b],
+        SsaRvalue::VariantPayload { base, .. } => vec![base],
+        SsaRvalue::SliceIndex { base, idx } => vec![base, idx],
+    }
+}
+
+/// Location for a phi copy: the phi's own span, else the first statement
+/// of the successor, else a synthetic span (copies never trap, so it never
+/// renders).
+fn copy_span(ssa: &SsaFunc, succ: usize, phi_span: &Option<Span>) -> Span {
+    if let Some(span) = phi_span {
+        return *span;
+    }
+    if let Some(span) = ssa
+        .blocks
+        .get(succ)
+        .and_then(|b| b.stmts.first())
+        .map(ssa_stmt_span)
+    {
+        return span;
+    }
+    synthetic_span()
+}
+
+fn ssa_stmt_span(stmt: &SsaStmt) -> Span {
+    match stmt {
+        SsaStmt::Assign { span, .. }
+        | SsaStmt::Call { span, .. }
+        | SsaStmt::Print { span, .. }
+        | SsaStmt::SetField { span, .. } => *span,
+    }
+}
+
+/// Rewrite the `from` edge of a terminator to `to` (for edge splitting).
+fn retarget_edge(term: &mut lobster_mir::Terminator, from: BlockId, to: BlockId) {
+    match term {
+        lobster_mir::Terminator::Goto(t) => {
+            if *t == from {
+                *t = to;
+            }
+        }
+        lobster_mir::Terminator::Branch {
+            then_bb, else_bb, ..
+        } => {
+            if *then_bb == from {
+                *then_bb = to;
+            }
+            if *else_bb == from {
+                *else_bb = to;
+            }
+        }
+        _ => {}
+    }
+}
+
+fn destruct_operand(op: &SsaOperand, undef: Local) -> lobster_mir::Operand {
+    match op {
+        SsaOperand::Value(v) => lobster_mir::Operand::Local(Local(v.0)),
+        SsaOperand::Const(c) => lobster_mir::Operand::Const(c.clone()),
+        SsaOperand::Undef => lobster_mir::Operand::Local(undef),
+    }
+}
+
+fn destruct_rvalue(rv: &SsaRvalue, undef: Local) -> lobster_mir::Rvalue {
+    use lobster_mir::Rvalue as R;
+    let map = |o: &SsaOperand| destruct_operand(o, undef);
+    match rv {
+        SsaRvalue::Use(o) => R::Use(map(o)),
+        SsaRvalue::Binary { op, l, r } => R::Binary {
+            op: *op,
+            l: map(l),
+            r: map(r),
+        },
+        SsaRvalue::Unary { op, v } => R::Unary { op: *op, v: map(v) },
+        SsaRvalue::Cast { to, v } => R::Cast {
+            to: to.clone(),
+            v: map(v),
+        },
+        SsaRvalue::Tuple(es) => R::Tuple(es.iter().map(map).collect()),
+        SsaRvalue::Field { base, field } => R::Field {
+            base: map(base),
+            field: *field,
+        },
+        SsaRvalue::Enum {
+            en,
+            variant,
+            payload,
+        } => R::Enum {
+            en: en.clone(),
+            variant: *variant,
+            payload: payload.iter().map(map).collect(),
+        },
+        SsaRvalue::Discriminant(b) => R::Discriminant(map(b)),
+        SsaRvalue::VariantPayload { base, idx } => R::VariantPayload {
+            base: map(base),
+            idx: *idx,
+        },
+        SsaRvalue::SliceLen(b) => R::SliceLen(map(b)),
+        SsaRvalue::SliceIndex { base, idx } => R::SliceIndex {
+            base: map(base),
+            idx: map(idx),
+        },
+    }
+}
+
+fn destruct_stmt(stmt: &SsaStmt, undef: Local) -> lobster_mir::MirStmt {
+    use lobster_mir::MirStmt as MirS;
+    match stmt {
+        SsaStmt::Assign { dst, rv, span } => MirS::Assign {
+            dst: Local(dst.0),
+            rv: destruct_rvalue(rv, undef),
+            span: *span,
+        },
+        SsaStmt::Call {
+            dst,
+            target,
+            args,
+            span,
+        } => MirS::Call {
+            dst: dst.map(|v| Local(v.0)),
+            target: match target {
+                SsaCallTarget::Fn(n) => lobster_mir::CallTarget::Fn(n.clone()),
+                SsaCallTarget::Value(o) => {
+                    lobster_mir::CallTarget::Value(destruct_operand(o, undef))
+                }
+            },
+            args: args.iter().map(|a| destruct_operand(a, undef)).collect(),
+            span: *span,
+        },
+        SsaStmt::Print { values, span } => MirS::Print {
+            values: values.iter().map(|v| destruct_operand(v, undef)).collect(),
+            span: *span,
+        },
+        SsaStmt::SetField {
+            dst: _,
+            base,
+            field,
+            value,
+            span,
+        } => {
+            // MIR updates the slot in place; the SSA `dst` version and the
+            // base slot coincide by the identity mapping.
+            let base_local = match destruct_operand(base, undef) {
+                lobster_mir::Operand::Local(l) => l,
+                lobster_mir::Operand::Const(_) => undef,
+            };
+            MirS::SetField {
+                base: base_local,
+                field: *field,
+                value: destruct_operand(value, undef),
+                span: *span,
+            }
+        }
+    }
+}
+
+fn destruct_term(term: &SsaTerm, undef: Local) -> lobster_mir::Terminator {
+    use lobster_mir::Terminator as MirT;
+    match term {
+        SsaTerm::Goto(t) => MirT::Goto(*t),
+        SsaTerm::Branch {
+            cond,
+            then_bb,
+            else_bb,
+        } => MirT::Branch {
+            cond: destruct_operand(cond, undef),
+            then_bb: *then_bb,
+            else_bb: *else_bb,
+        },
+        SsaTerm::Return(v) => MirT::Return(v.as_ref().map(|o| destruct_operand(o, undef))),
+        SsaTerm::Trap { kind, span } => MirT::Trap {
+            kind: kind.clone(),
+            span: *span,
+        },
+        SsaTerm::Unreachable => MirT::Trap {
+            kind: lobster_mir::TrapKind::Unreachable("destruct of unreachable".to_string()),
+            span: synthetic_span(),
+        },
     }
 }
 
@@ -1595,6 +1975,20 @@ mod tests {
     }
 
     #[test]
+    fn destruct_keeps_functions_and_materializes_phis() {
+        let ssa = ssa_of(
+            "fn f(c: bool) -> u32 {\n    let x = if c {\n        1u32\n    } else {\n        2u32\n    };\n    x\n}\nfn main() {\n    println(f(true));\n}\n",
+        );
+        verify(&ssa).expect("ssa verifies");
+        let mir = destruct(&ssa);
+        assert!(mir.funcs.contains_key("f"));
+        assert!(mir.funcs.contains_key("main"));
+        let ssa_blocks: usize = ssa.funcs.values().map(|f| f.blocks.len()).sum();
+        let mir_blocks: usize = mir.funcs.values().map(|f| f.blocks.len()).sum();
+        assert!(mir_blocks >= ssa_blocks, "copies add blocks, never remove");
+    }
+
+    #[test]
     fn verifier_rejects_phi_arm_mismatch() {
         let mut prog = ssa_of("fn main() {\n    println(1u32);\n}\n");
         let f = prog.funcs.get_mut("main").unwrap();
@@ -1606,6 +2000,7 @@ mod tests {
             ty: Ty::Int(IntTy::U32),
             origin: Local(0),
             arms: Vec::new(),
+            span: None,
         });
         let errs = verify(&prog).unwrap_err();
         assert!(!errs.is_empty(), "expected phi errors");
