@@ -1,0 +1,6 @@
+error[E218]: unknown variant
+
+  --> e218_unknown_variant.lobster:5:5
+   |
+5 |     Dir::Up;
+        ^^^^^^^ enum `Dir` has no variant `Up`

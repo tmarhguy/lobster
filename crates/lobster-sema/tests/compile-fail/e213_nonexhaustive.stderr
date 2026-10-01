@@ -1,0 +1,6 @@
+error[E213]: non-exhaustive match
+
+  --> e213_nonexhaustive.lobster:6:5
+   |
+6 |     match d {
+    missing variants: South

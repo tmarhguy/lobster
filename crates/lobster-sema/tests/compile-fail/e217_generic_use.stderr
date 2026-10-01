@@ -1,0 +1,6 @@
+error[E217]: generics are not supported yet
+
+  --> e217_generic_use.lobster:5:9
+   |
+5 | fn f(v: Option<u64>) {}
+            ^^^^^^^^^^^ parameter uses a generic item (monomorphization is deferred)

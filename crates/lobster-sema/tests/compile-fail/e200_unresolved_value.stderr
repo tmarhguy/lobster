@@ -1,0 +1,6 @@
+error[E200]: unresolved name
+
+  --> e200_unresolved_value.lobster:2:5
+   |
+2 |     nosuchfn();
+        ^^^^^^^^ no value named `nosuchfn` in scope

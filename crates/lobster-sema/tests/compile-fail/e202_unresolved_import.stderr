@@ -1,0 +1,6 @@
+error[E202]: unresolved import
+
+  --> e202_unresolved_import.lobster:1:1
+   |
+1 | import math::sqrt;
+    ^^^^^^^^^^^^^^^^^^ no module `math::sqrt` (multi-file modules are deferred)

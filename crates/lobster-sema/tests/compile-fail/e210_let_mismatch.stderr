@@ -1,0 +1,6 @@
+error[E210]: type mismatch in let binding
+
+  --> e210_let_mismatch.lobster:2:5
+   |
+2 |     let x: i32 = true;
+        ^^^^^^^^^^^^^^^^^^ expected i32, found bool

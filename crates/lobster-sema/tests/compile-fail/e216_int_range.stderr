@@ -1,0 +1,6 @@
+error[E216]: literal out of range
+
+  --> e216_int_range.lobster:2:17
+   |
+2 |     let x: u8 = 300u8;
+                    ^^^^^ 300 does not fit in u8

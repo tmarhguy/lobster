@@ -1,0 +1,6 @@
+error[E201]: duplicate definition
+
+  --> e201_duplicate_item.lobster:2:1
+   |
+2 | fn f() {}
+    ^^^^^^^^^ function `f` is defined more than once

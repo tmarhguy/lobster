@@ -1,0 +1,6 @@
+error[E211]: wrong number of arguments
+
+  --> e211_arity.lobster:2:13
+   |
+2 | fn main() { f(1u32, 2u32); }
+                ^^^^^^^^^^^^^ `f` takes 1 arguments, 2 given

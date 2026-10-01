@@ -1,0 +1,6 @@
+error[E215]: invalid assignment target
+
+  --> e215_bad_assign.lobster:2:5
+   |
+2 |     1u32 = 2u32;
+        ^^^^ can only assign to a variable, field, or dereference

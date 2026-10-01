@@ -1,0 +1,6 @@
+error[E217]: missing initializer
+
+  --> e217_missing_init.lobster:2:5
+   |
+2 |     let x: i32;
+        ^^^^^^^^^^^ type inference needs an initializer (deferred)

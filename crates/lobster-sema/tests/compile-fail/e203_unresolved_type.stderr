@@ -1,0 +1,6 @@
+error[E203]: unresolved type
+
+  --> e203_unresolved_type.lobster:1:9
+   |
+1 | fn f(x: Nope) {}
+            ^^^^ no type named `Nope` in scope

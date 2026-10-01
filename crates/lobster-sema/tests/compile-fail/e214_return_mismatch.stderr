@@ -1,0 +1,6 @@
+error[E214]: return mismatch
+
+  --> e214_return_mismatch.lobster:1:15
+   |
+1 | fn f() -> u32 {
+    expected u32, found ()

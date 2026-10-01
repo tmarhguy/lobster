@@ -1,0 +1,6 @@
+error[E212]: illegal cast
+
+  --> e212_bad_cast.lobster:2:13
+   |
+2 |     let x = 1u32 as bool;
+                ^^^^ cannot cast u32 as bool

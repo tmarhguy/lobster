@@ -1,0 +1,17 @@
+[package]
+name = "lobster-sema"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Lobster semantic analysis: type checking over resolved AST (spec section 23)"
+
+[dependencies]
+lobster-source = { path = "../lobster-source" }
+lobster-diagnostics = { path = "../lobster-diagnostics" }
+lobster-ast = { path = "../lobster-ast" }
+lobster-types = { path = "../lobster-types" }
+lobster-resolve = { path = "../lobster-resolve" }
+
+[dev-dependencies]
+lobster-lexer = { path = "../lobster-lexer" }
+lobster-parser = { path = "../lobster-parser" }
