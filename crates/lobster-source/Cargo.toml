@@ -1,0 +1,10 @@
+[package]
+name = "lobster-source"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Lobster source manager: stable file IDs, spans, line/column mapping (file.md section 18)"
+
+[dependencies]
+
+[dev-dependencies]
