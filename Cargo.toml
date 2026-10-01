@@ -9,6 +9,9 @@ members = [
     "crates/lobster-types",
     "crates/lobster-resolve",
     "crates/lobster-sema",
+    "crates/lobster-hir",
+    "crates/lobster-mir",
+    "crates/lobster-interp",
 ]
 resolver = "2"
 

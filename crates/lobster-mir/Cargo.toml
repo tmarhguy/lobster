@@ -1,0 +1,18 @@
+[package]
+name = "lobster-mir"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Lobster mid-level IR: CFG with basic blocks over typed HIR (Commit 04)"
+
+[dependencies]
+lobster-source = { path = "../lobster-source" }
+lobster-ast = { path = "../lobster-ast" }
+lobster-types = { path = "../lobster-types" }
+lobster-hir = { path = "../lobster-hir" }
+
+[dev-dependencies]
+lobster-lexer = { path = "../lobster-lexer" }
+lobster-parser = { path = "../lobster-parser" }
+lobster-resolve = { path = "../lobster-resolve" }
+lobster-sema = { path = "../lobster-sema" }

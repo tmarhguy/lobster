@@ -1,0 +1,19 @@
+[package]
+name = "lobster-interp"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Lobster reference interpreter: executes MIR CFGs with strict language semantics (Commit 04)"
+
+[dependencies]
+lobster-source = { path = "../lobster-source" }
+lobster-ast = { path = "../lobster-ast" }
+lobster-types = { path = "../lobster-types" }
+lobster-mir = { path = "../lobster-mir" }
+
+[dev-dependencies]
+lobster-lexer = { path = "../lobster-lexer" }
+lobster-parser = { path = "../lobster-parser" }
+lobster-resolve = { path = "../lobster-resolve" }
+lobster-sema = { path = "../lobster-sema" }
+lobster-hir = { path = "../lobster-hir" }

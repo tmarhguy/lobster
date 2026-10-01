@@ -260,7 +260,10 @@ dependencies = [
  "assert_cmd",
  "clap",
  "lobster-diagnostics",
+ "lobster-hir",
+ "lobster-interp",
  "lobster-lexer",
+ "lobster-mir",
  "lobster-parser",
  "lobster-resolve",
  "lobster-sema",
@@ -278,11 +281,54 @@ dependencies = [
 ]
 
 [[package]]
+name = "lobster-hir"
+version = "0.1.0"
+dependencies = [
+ "lobster-ast",
+ "lobster-diagnostics",
+ "lobster-lexer",
+ "lobster-parser",
+ "lobster-resolve",
+ "lobster-sema",
+ "lobster-source",
+ "lobster-types",
+]
+
+[[package]]
+name = "lobster-interp"
+version = "0.1.0"
+dependencies = [
+ "lobster-ast",
+ "lobster-hir",
+ "lobster-lexer",
+ "lobster-mir",
+ "lobster-parser",
+ "lobster-resolve",
+ "lobster-sema",
+ "lobster-source",
+ "lobster-types",
+]
+
+[[package]]
 name = "lobster-lexer"
 version = "0.1.0"
 dependencies = [
  "lobster-diagnostics",
  "lobster-source",
+]
+
+[[package]]
+name = "lobster-mir"
+version = "0.1.0"
+dependencies = [
+ "lobster-ast",
+ "lobster-hir",
+ "lobster-lexer",
+ "lobster-parser",
+ "lobster-resolve",
+ "lobster-sema",
+ "lobster-source",
+ "lobster-types",
 ]
 
 [[package]]

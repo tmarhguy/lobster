@@ -66,6 +66,18 @@ pub struct Program {
 pub struct Tables {
     /// Type of every checked expression, by [`NodeId`].
     pub node_types: HashMap<NodeId, SemTy>,
+    /// Type of every checked expression, by source span.
+    /// Populated alongside `node_types`; consumed by HIR lowering
+    /// (Commit 04) without needing the internal id assignment order.
+    pub span_types: HashMap<SpanPair, SemTy>,
+}
+
+impl Tables {
+    /// Type recorded for the expression at `span`, if any.
+    #[must_use]
+    pub fn type_at(&self, span: Span) -> Option<SemTy> {
+        self.span_types.get(&span_pair(span)).cloned()
+    }
 }
 
 /// Check a file, returning only diagnostics (CLI entry point).
@@ -163,7 +175,8 @@ impl<'a> Checker<'a> {
                 id
             }
         };
-        self.tables.node_types.insert(id, ty);
+        self.tables.node_types.insert(id, ty.clone());
+        self.tables.span_types.insert(key, ty);
     }
 
     // ----- signatures -----
