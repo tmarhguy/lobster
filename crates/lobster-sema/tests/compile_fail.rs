@@ -58,8 +58,9 @@ fn compile_fail_suite() {
         if std::env::var("LOBSTER_UPDATE").is_ok() {
             std::fs::write(&expected_path, &out).expect("write snapshot");
         } else {
-            let want = std::fs::read_to_string(&expected_path)
-                .unwrap_or_else(|_| panic!("missing snapshot for {name}; run with LOBSTER_UPDATE=1"));
+            let want = std::fs::read_to_string(&expected_path).unwrap_or_else(|_| {
+                panic!("missing snapshot for {name}; run with LOBSTER_UPDATE=1")
+            });
             assert_eq!(out, want, "diagnostic mismatch for {name}");
         }
     }
