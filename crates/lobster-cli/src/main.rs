@@ -1,9 +1,9 @@
 //! `lobster` command-line interface.
 //!
-//! Commit 05 scope: real `check` (lex, parse, resolve, type-check) and real
-//! `run` (lower HIR/MIR/SSA, verify SSA, execute the reference interpreter).
-//! Every other subcommand is an honest stub: it exits with code 2 and says
-//! so — it never pretends to succeed.
+//! Commit 06 scope: real `check` (lex, parse, resolve, type-check) and real
+//! `run` (lower HIR/MIR/SSA, optimize, verify SSA, execute the reference
+//! interpreter). Every other subcommand is an honest stub: it exits with
+//! code 2 and says so — it never pretends to succeed.
 
 use clap::{Parser, Subcommand};
 use lobster_diagnostics::{Diagnostic, Label, Renderer};
@@ -46,12 +46,15 @@ enum Command {
         /// Print the lowered MIR CFG and exit without running.
         #[arg(long)]
         dump_mir: bool,
-        /// Print the SSA CFG (after verification) and exit without running.
+        /// Print the SSA CFG (optimized, after verification) and exit.
         #[arg(long)]
         dump_ssa: bool,
         /// Verify the SSA CFG, report `ssa ok`, and exit without running.
         #[arg(long)]
         verify_ssa: bool,
+        /// Optimization level: 0 (none) or 1 (all passes). Default 1.
+        #[arg(long, default_value_t = 1)]
+        opt_level: u8,
     },
     /// Run tests.
     Test {},
@@ -137,7 +140,13 @@ fn cmd_check(file: PathBuf) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn cmd_run(file: PathBuf, dump_mir: bool, dump_ssa: bool, verify_ssa: bool) -> ExitCode {
+fn cmd_run(
+    file: PathBuf,
+    dump_mir: bool,
+    dump_ssa: bool,
+    verify_ssa: bool,
+    opt_level: u8,
+) -> ExitCode {
     let display = file.display().to_string();
     let text = match std::fs::read_to_string(&file) {
         Ok(t) => t,
@@ -200,6 +209,14 @@ fn cmd_run(file: PathBuf, dump_mir: bool, dump_ssa: bool, verify_ssa: bool) -> E
     // SSA construction always runs: it must verify before execution so a
     // malformed CFG fails closed instead of executing.
     let ssa = lobster_ssa::build(&mir);
+    let level = match lobster_opt::OptLevel::parse(opt_level) {
+        Some(level) => level,
+        None => {
+            eprintln!("error[LOBSTER-003]: unknown opt level '{opt_level}': expected 0 or 1");
+            return ExitCode::from(1);
+        }
+    };
+    let (ssa, stats) = lobster_opt::optimize(&ssa, level);
     if let Err(errors) = lobster_ssa::verify(&ssa) {
         for e in &errors {
             eprintln!("error[SSA-verify]: {e}");
@@ -215,7 +232,11 @@ fn cmd_run(file: PathBuf, dump_mir: bool, dump_ssa: bool, verify_ssa: bool) -> E
         return ExitCode::SUCCESS;
     }
     if verify_ssa {
-        println!("ssa ok: {display}");
+        println!(
+            "ssa ok: {display} (O{}: {})",
+            level.as_u8(),
+            stats.summary()
+        );
         return ExitCode::SUCCESS;
     }
     match lobster_interp::run_main(&mir) {
@@ -257,7 +278,8 @@ fn main() -> ExitCode {
             dump_mir,
             dump_ssa,
             verify_ssa,
-        } => cmd_run(file, dump_mir, dump_ssa, verify_ssa),
+            opt_level,
+        } => cmd_run(file, dump_mir, dump_ssa, verify_ssa, opt_level),
         Command::Test {} => not_implemented("lobster test"),
         Command::Bench {} => not_implemented("lobster bench"),
         Command::Fmt { .. } => not_implemented("lobster fmt"),
