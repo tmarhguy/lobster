@@ -69,10 +69,56 @@ fn check_empty_file_is_error_lobster002() {
 #[test]
 fn unimplemented_subcommands_exit_2() {
     lobster()
-        .arg("run")
+        .arg("build")
         .assert()
         .code(2)
         .stderr(predicates::str::contains("LOBSTER-000"));
+}
+
+#[test]
+fn run_hello_prints_55() {
+    let hello = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/hello.lobster");
+    lobster()
+        .args(["run", hello])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("55"));
+}
+
+#[test]
+fn run_dump_mir_prints_cfg() {
+    let hello = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/hello.lobster");
+    lobster()
+        .args(["run", hello, "--dump-mir"])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("bb0"));
+}
+
+#[test]
+fn run_type_error_fails() {
+    let mut f = tempfile::NamedTempFile::with_suffix(".lobster").unwrap();
+    writeln!(f, "fn main() {{\n    let x: i32 = true;\n}}").unwrap();
+    lobster()
+        .args(["run", &f.path().display().to_string()])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("E210"));
+}
+
+#[test]
+fn run_div_zero_traps() {
+    let mut f = tempfile::NamedTempFile::with_suffix(".lobster").unwrap();
+    writeln!(
+        f,
+        "fn main() {{\n    let x = 1u32 / 0u32;\n    println(x);\n}}"
+    )
+    .unwrap();
+    lobster()
+        .args(["run", &f.path().display().to_string()])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("TRAP-DIV0"));
 }
 
 #[test]
