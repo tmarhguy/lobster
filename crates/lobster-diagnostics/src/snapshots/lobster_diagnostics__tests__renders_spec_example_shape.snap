@@ -1,0 +1,12 @@
+---
+source: crates/lobster-diagnostics/src/lib.rs
+expression: out
+---
+error[E021]: mismatched types
+
+  --> demo.lobster:2:18
+   |
+2 |     let x: i32 = "hello";
+                     ^^^^^^^ expected i32, found string
+   = secondary: demo.lobster:2:9: declared here
+   = note: opaque note for snapshot
