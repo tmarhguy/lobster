@@ -1,3 +1,31 @@
-/log/.obsidian
+# Local-only project brief: never commit or push (see docs/spec.md instead).
+/file.md
+
+# Rust build output (Cargo.lock stays tracked: `lobster` is a binary workspace).
 /target/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Editors and IDEs
+.vscode/
+.idea/
+.cursor/
+
+# Obsidian (log/ is a journal, not a vault)
+.obsidian/
+**/.obsidian/
+.trash/
+
+# Secrets and local env
+.env
+
+# insta snapshot review leftovers
 *.snap.new
+
+# Editor backups and merge leftovers
+*~
+*.orig
+*.rej
+*.bak
