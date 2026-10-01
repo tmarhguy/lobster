@@ -1,0 +1,10 @@
+[package]
+name = "lobster-lexer"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Lobster lexer: tokens, numbers, strings, comments (file.md section 19)"
+
+[dependencies]
+lobster-source = { path = "../lobster-source" }
+lobster-diagnostics = { path = "../lobster-diagnostics" }
