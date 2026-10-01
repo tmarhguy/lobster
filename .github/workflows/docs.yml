@@ -1,0 +1,46 @@
+name: docs
+on:
+  push:
+    paths:
+      - 'docs/**'
+      - 'scripts/build-docs.sh'
+      - 'Makefile'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'scripts/build-docs.sh'
+      - 'Makefile'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - run: gem install asciidoctor rouge
+      - run: make docs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/docs
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
+    concurrency:
+      group: pages
+      cancel-in-progress: false
