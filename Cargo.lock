@@ -264,6 +264,7 @@ dependencies = [
  "lobster-interp",
  "lobster-lexer",
  "lobster-mir",
+ "lobster-opt",
  "lobster-parser",
  "lobster-resolve",
  "lobster-sema",
@@ -329,6 +330,23 @@ dependencies = [
  "lobster-resolve",
  "lobster-sema",
  "lobster-source",
+ "lobster-types",
+]
+
+[[package]]
+name = "lobster-opt"
+version = "0.1.0"
+dependencies = [
+ "lobster-ast",
+ "lobster-hir",
+ "lobster-interp",
+ "lobster-lexer",
+ "lobster-mir",
+ "lobster-parser",
+ "lobster-resolve",
+ "lobster-sema",
+ "lobster-source",
+ "lobster-ssa",
  "lobster-types",
 ]
 

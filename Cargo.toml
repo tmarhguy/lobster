@@ -13,6 +13,7 @@ members = [
     "crates/lobster-mir",
     "crates/lobster-interp",
     "crates/lobster-ssa",
+    "crates/lobster-opt",
 ]
 resolver = "2"
 

@@ -1,0 +1,21 @@
+[package]
+name = "lobster-opt"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Lobster generic optimizer: SSA passes with O0/O1 levels (Commit 06)"
+
+[dependencies]
+lobster-source = { path = "../lobster-source" }
+lobster-ast = { path = "../lobster-ast" }
+lobster-types = { path = "../lobster-types" }
+lobster-mir = { path = "../lobster-mir" }
+lobster-ssa = { path = "../lobster-ssa" }
+
+[dev-dependencies]
+lobster-lexer = { path = "../lobster-lexer" }
+lobster-parser = { path = "../lobster-parser" }
+lobster-resolve = { path = "../lobster-resolve" }
+lobster-sema = { path = "../lobster-sema" }
+lobster-hir = { path = "../lobster-hir" }
+lobster-interp = { path = "../lobster-interp" }
