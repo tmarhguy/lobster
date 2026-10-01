@@ -1,0 +1,38 @@
+[[limitations]]
+== Known limitations
+
+What the system does not do, cannot do, or does only under conditions. Write
+this chapter honestly: every limitation documented here is a support request
+that never gets filed.
+
+* Documented here and tracked — scheduled work with an owner.
+* Documented here and accepted — will not change; design around it.
+* Not documented anywhere — unknown, and therefore the reader's risk. Keep
+  this class empty by writing the other two down.
+
+[[limitations-accepted]]
+=== Accepted limitations
+
+* _Scope boundary._ Inputs outside the specified domain are rejected rather
+  than handled. The exact rejection codes are listed in <<design-errors>>.
+* _Scale boundary._ Behavior above the validated limits in <<performance>>
+  is undefined; do not extrapolate the tables.
+* _Platform boundary._ Targets not named in <<implementation-build>> are
+  unsupported, even if the system appears to run on them.
+
+WARNING: Accepted limitations are contractual. Later revisions may lift
+them, but no revision will silently violate them. If a limit changes, this
+chapter changes first.
+
+[[limitations-roadmap]]
+=== Near-term gaps
+
+Numbered, each with its current workaround:
+
+. _Gap one._ What is missing, who is affected, and the supported workaround
+  until it lands.
+. _Gap two._ Same pattern: missing capability, affected users, workaround.
+
+When a gap closes, delete its item and move the new capability to the chapter
+that owns it. This chapter must never describe the present as if it were the
+future.

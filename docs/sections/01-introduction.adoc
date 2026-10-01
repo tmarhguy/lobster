@@ -1,0 +1,57 @@
+== Introduction
+
+This chapter states what the system is, what it is not, and how the rest of
+the manual is organized. Keep it short: one page that tells a new engineer
+whether they are in the right place.
+
+[[intro-purpose]]
+=== Purpose
+
+Describe the system in two or three sentences. Name the problem it solves, the
+environment it targets, and the maturity of the implementation. Link out to
+the concise project overview in `README.md` and to day-to-day status tracking
+(such as `docs/status.md` in this repository) by file path.
+
+A second paragraph should state non-goals explicitly. What is deliberately out
+of scope? What should a reader _not_ expect from this system?
+
+=== Scope and audience
+
+The intended reader is an engineer who will build on, integrate, or verify
+this system. Assume fluency with the relevant domain and no prior knowledge of
+this project. The manual demonstrates the writing primitives used throughout:
+
+* normal paragraphs like this one,
+* unordered lists like this one,
+* ordered lists, such as the chapter map below,
+* `inline code` for names of files, signals, commands, and identifiers.
+
+. Manual roadmap
+. <<architecture,Architecture>> — major blocks and their responsibilities.
+. <<design,Design>> — internal structure and data flow.
+. <<interfaces,Interfaces>> — boundaries other systems touch.
+. <<programming-model,Programming model>> — how to drive the system.
+. <<verification,Verification>> — how correctness is established.
+. <<implementation,Implementation>> — how it is built and delivered.
+. <<performance,Performance>> — measured behavior and budgets.
+. <<limitations,Known limitations>> — honest boundaries.
+
+External links look like this: the https://asciidoctor.org/docs/[Asciidoctor
+documentation] describes every block used in this manual. Internal cross
+references look like this: <<verification>> explains how the claims in
+<<performance>> are tested.
+
+NOTE: Notes highlight information a reader needs but might skip. Use them for
+context, not for corrective action.
+
+TIP: Tips describe a better way to do something the reader already intends to
+do, such as building this manual with `make docs`.
+
+=== Conventions
+
+Units, notation, and naming rules used in this manual:
+
+* Register and field names appear as `UPPER_SNAKE_CASE`.
+* File paths appear as `path/to/file`.
+* Commands appear as `command --flag`.
+* All numeric values state their radix or unit unless decimal is unambiguous.

@@ -1,0 +1,53 @@
+[[performance]]
+== Performance
+
+Measured behavior and resource budgets. Every number here names its method;
+numbers without methods live in marketing material, not in this manual.
+
+[[performance-metrics]]
+=== Metrics
+
+Report each metric with four columns: what was measured, on what, how, and
+the result. Point at the harness or benchmark definition rather than
+pasting raw logs.
+
+[cols="1,1,1,1",options="header"]
+|===
+| Metric | Setup | Method | Result
+
+| Throughput
+| Reference configuration
+| Harness in `benchmarks/`, median of 5 runs
+| _record here_
+
+| Latency (p99)
+| Reference configuration
+| Same harness, same runs
+| _record here_
+
+| Footprint
+| Smallest supported target
+| Size of delivered artifact on disk
+| _record here_
+|===
+
+[[performance-model]]
+=== Model
+
+When performance follows a simple law, state it. The relationship below is
+shown as a literal block so the manual renders identically with or without
+mathematics support:
+
+[source,text]
+----
+T = N / f      # wall time = work items / throughput
+L = D + Q      # latency   = service demand + queueing
+----
+
+To render real equations instead, uncomment the `:stem:` attribute in
+`docs/index.adoc`. That pulls MathJax from a CDN at page-view time, so it
+remains opt-in: the default manual is fully self-contained.
+
+TIP: Budgets beat goals. Write each performance requirement as "at most X
+under conditions Y" and add the corresponding row to the
+<<verification-matrix,coverage matrix>>.

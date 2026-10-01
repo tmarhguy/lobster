@@ -1,0 +1,60 @@
+= Lobster Technical Reference Manual
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectanchors:
+:icons: font
+:source-highlighter: rouge
+:docinfo: shared
+:docinfodir: theme
+:imagesdir: images
+:reproducible:
+:last-update-label!:
+
+// Project identity for the generated site lives on the title line above.
+// Theme files under docs/theme/ intentionally contain no project names so
+// they can be copied unchanged into other repositories.
+//
+// To enable rendered mathematics, uncomment the next line. It pulls in
+// MathJax from a CDN at page-view time, so it stays off by default to keep
+// the manual fully self-contained.
+// :stem: latexmath
+
+This manual is the detailed technical reference for the project. It is the
+engineering datasheet: architecture, interfaces, programming model,
+verification, implementation, performance, and known limitations.
+
+The repository root `README.md` remains the concise project overview. Normative
+day-to-day sources such as `docs/spec.md`, `docs/status.md`, and `docs/adr/`
+stay where they are; this manual summarizes stable structure and points at
+those files by path instead of duplicating them.
+
+== How to use this manual
+
+Chapters are assembled from individual files so they are easy to add, delete,
+rename, and reorder. Each `include::` line below maps to one file in
+`docs/sections/`. Delete a line to drop a chapter; duplicate and rename a
+line to add one; reorder lines to reorder chapters. Numbering follows document
+order automatically through `:sectnums:`.
+
+TIP: Keep each chapter in its own file and use `==` for the chapter title.
+Subsections use `===` (and `====` sparingly). Deeper levels stay out of the
+sidebar because `:toclevels:` is 3.
+
+include::sections/01-introduction.adoc[]
+
+include::sections/02-architecture.adoc[]
+
+include::sections/03-design.adoc[]
+
+include::sections/04-interfaces.adoc[]
+
+include::sections/05-programming-model.adoc[]
+
+include::sections/06-verification.adoc[]
+
+include::sections/07-implementation.adoc[]
+
+include::sections/08-performance.adoc[]
+
+include::sections/09-limitations.adoc[]

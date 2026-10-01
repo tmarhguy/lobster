@@ -1,0 +1,46 @@
+[[design]]
+== Design
+
+This chapter explains how the architecture is realized internally: data
+structures, flow of information, and error behavior. It is written for the
+engineer who must modify the system, not just use it.
+
+[[design-pipeline]]
+=== Pipeline stages
+
+Describe each stage in pipeline order. For each stage, state its input
+contract, its output contract, and the invariant it preserves for downstream
+stages. The figure below shows the generic shape; replace it with the real
+block diagram for this system.
+
+.Generic processing pipeline — replace with the system block diagram.
+image::block-diagram.svg[Processing pipeline: source, transform, verify, emit]
+
+Keep figures simple line diagrams with a caption. Store sources next to the
+manual (for example under `docs/diagrams/`) and export vector graphics into
+`docs/images/`.
+
+[[design-representation]]
+=== Representations
+
+Name each intermediate representation or data model and the passes that may
+observe or mutate it. State explicitly what structure must be preserved across
+lowering: upstream stages must not destroy information that downstream stages
+(synthesis, optimization, code generation) still need.
+
+WARNING: Document destructive normalizations here. Any pass that discards
+provenance, ordering, or precision must list exactly what it drops and which
+downstream consumer approved the loss.
+
+[[design-errors]]
+=== Error handling
+
+Errors are part of the design, not an appendix to it. Classify every failure
+the system can report:
+
+* _Input errors_ — malformed input, rejected before any transformation.
+* _Verification errors_ — internally inconsistent state, fail closed.
+* _Runtime traps_ — well-defined aborts with a code, never silent corruption.
+
+Each class gets a code namespace that does not collide with the others, so a
+bare code such as `E110` or `TRAP-REF` is unambiguous without context.

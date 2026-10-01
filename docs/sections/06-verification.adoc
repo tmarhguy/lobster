@@ -1,0 +1,53 @@
+[[verification]]
+== Verification
+
+How confidence in the system is established. Every normative claim elsewhere
+in this manual should be traceable to a check named here.
+
+[[verification-strategy]]
+=== Strategy
+
+One paragraph per layer, from cheapest to most expensive:
+
+* _Unit checks_ — single blocks in isolation, including boundary values.
+* _Negative checks_ — malformed inputs that must be rejected with the exact
+  documented code, never a panic or silent acceptance.
+* _Integration checks_ — end-to-end paths from input to observable output.
+* _Differential checks_ — two independent implementations agreeing on outputs.
+
+Document the fail-closed rule here: any verification stage that cannot prove
+its invariant stops the pipeline rather than passing suspect state through.
+
+[[verification-matrix]]
+=== Coverage matrix
+
+The matrix maps claims to evidence. Keep it current: a row without evidence
+is a roadmap item, not a fact.
+
+[cols="1,1,2",options="header"]
+|===
+| Claim (chapter) | Evidence | Location
+
+| Input validation (<<design-errors>>)
+| Corpus of malformed inputs, each mapped to its code
+| Test suite / corpus directory
+
+| End-to-end behavior (<<programming-model-quickstart>>)
+| Checked-in examples, all passing
+| Examples directory
+
+| Error taxonomy (<<design-errors>>)
+| Snapshot tests over rendered diagnostics
+| Test suite / snapshots
+|===
+
+NOTE: Verification proves the checked-in tree, not the roadmap. Status
+tracking (such as `docs/status.md` in this repository) records which rows are
+backed by the working tree today.
+
+[[verification-regression]]
+=== Regression policy
+
+Every fixed bug gains a regression check that fails without the fix and
+passes with it. Checks run in continuous integration on every change; a
+feature is not complete because one example exercises it.

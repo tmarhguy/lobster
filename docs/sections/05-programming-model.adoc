@@ -1,0 +1,68 @@
+[[programming-model]]
+== Programming model
+
+How to drive the system correctly. This chapter is read at a keyboard: every
+claim here should be executable or directly checkable.
+
+[[programming-model-quickstart]]
+=== Quick start
+
+The smallest complete interaction, first. No explanation before the reader has
+seen it work:
+
+[source,bash]
+----
+tool check examples/hello        # validate, print diagnostics or "ok"
+tool run   examples/hello        # execute from the entry point
+----
+
+Follow with one paragraph per line: what each command did, what success looks
+like, and where the corresponding diagnostics are specified
+(<<design-errors>>).
+
+[[programming-model-registers]]
+=== State and configuration map
+
+Exhaustively list every knob and observable: registers, flags, configuration
+words, or API entry points. This is the table a driver author codes against.
+
+.Control map (template — adapt to this system)
+[cols="1,1,1,3",options="header"]
+|===
+| Name | Reset | Access | Description
+
+| `CTRL_ENABLE`
+| `0`
+| R/W
+| `1` arms the unit; `0` idles it. Write `0` before reconfiguring.
+
+| `STATUS`
+| `0`
+| R
+| Bit `0`: busy. Bit `1`: error latched; clear by writing `CTRL_ENABLE=0`.
+
+| `CONFIG`
+| `0`
+| R/W
+| Mode word. Reserved bits must be written `0`.
+|===
+
+[[programming-model-sequences]]
+=== Sequences
+
+Multi-step procedures as numbered lists, one step per action, with the
+expected observable after each step:
+
+. Write `CONFIG`, then set `CTRL_ENABLE=1`.
+. Poll `STATUS` bit `0` until it clears.
+. If `STATUS` bit `1` is set, read back the result word: it holds an error
+  code from the <<design-errors,error taxonomy>>, not data.
+
+==== Clearing a latched error
+
+. Write `CTRL_ENABLE=0` to idle the unit.
+. Read `STATUS`: both bits must now be `0`.
+. Re-write `CONFIG` if the mode changed, then set `CTRL_ENABLE=1` again.
+
+CAUTION: Sequences that omit a stated step are unsupported, even if they
+appear to work. The system may enforce ordering in later revisions.

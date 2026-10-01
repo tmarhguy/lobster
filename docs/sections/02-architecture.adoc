@@ -1,0 +1,65 @@
+[[architecture]]
+== Architecture
+
+Describe the system as a small number of major blocks plus the paths between
+them. A reader should leave this chapter able to draw the system on a
+whiteboard from memory.
+
+[[architecture-overview]]
+=== Overview
+
+One paragraph per block: what it owns, what it does not own, and which
+invariants it upholds. Prefer ownership statements ("Block A owns …") over
+mechanism; mechanism belongs in <<design>>.
+
+The table below is the canonical block inventory. Keep it dense: one row per
+block, one responsibility clause per row.
+
+.Block inventory (adapt to this system)
+[cols="1,2,3",options="header"]
+|===
+| Block | Responsibility | Owns (state / artifacts)
+
+| Frontend
+| Accept inputs, reject malformed inputs with diagnostics
+| Input representation, error codes
+
+| Core
+| Transform validated inputs into results
+| Intermediate representations, invariants
+
+| Backend
+| Deliver results to each supported target
+| Target-specific lowering, output artifacts
+|===
+
+TIP: If a block does not fit one row, it is probably two blocks. Split it.
+
+[[architecture-dataflow]]
+=== Data flow
+
+Describe the end-to-end path in order. Name each handoff and the artifact it
+carries. A minimal equivalent in code:
+
+[source,text]
+----
+input -> validate -> transform -> lower -> output
+----
+
+Each arrow is a contract: document the artifact format at the arrow, not just
+the stage at either end. Where a stage can fail, name the failure signal here
+and defer the full taxonomy to <<verification>>.
+
+[[architecture-control]]
+=== Control and configuration
+
+How is the system told what to do? Enumerate the control inputs: command-line
+flags, configuration files, environment variables, or control registers. State
+defaults and state which settings are fail-closed (an invalid setting stops
+the system rather than degrading silently).
+
+[source,text]
+----
+tool check <file>          # validate only, report diagnostics
+tool run <file> --verify  # validate, verify, then execute
+----

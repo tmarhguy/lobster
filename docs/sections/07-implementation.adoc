@@ -1,0 +1,55 @@
+[[implementation]]
+== Implementation
+
+How the system is built, packaged, and delivered. A new contributor should be
+able to go from a clean checkout to a verified artifact by following this
+chapter alone.
+
+[[implementation-build]]
+=== Build
+
+Prerequisites first: compilers, toolchains, and the minimum versions that are
+known to work. Then the build itself as a numbered sequence:
+
+. Fetch dependencies (one command; no manual downloads).
+. Build the artifacts (one command; state expected duration on a reference
+  machine).
+. Run the verification gate from <<verification-regression>>.
+
+[source,bash]
+----
+tool fetch    # retrieve pinned dependencies
+tool build    # produce artifacts under build/
+tool gate     # format, lint, and test — must pass before review
+----
+
+NOTE: The build is reproducible: the same commit and the same pinned
+dependencies produce bit-identical artifacts. Anything that breaks
+reproducibility (timestamps, absolute paths, unpinned downloads) is a bug.
+
+[[implementation-dependencies]]
+=== Dependencies
+
+Every dependency is load-bearing and listed here with its purpose. There is
+no vendored copy of anything the package manager can pin.
+
+[cols="1,1,2",options="header"]
+|===
+| Dependency | Version bound | Purpose
+
+| Toolchain
+| pinned per release
+| Builds all artifacts; no alternative is supported
+
+| Standard library only
+| —
+| Keeps the dependency surface auditable
+|===
+
+[[implementation-artifacts]]
+=== Artifacts
+
+Name each deliverable, where it lands, and how to tell a good one from a bad
+one (checksums, version stamps, self-test flags). Generated files are never
+committed to the source tree; they live under a clearly generated directory
+that the ignore rules exclude.

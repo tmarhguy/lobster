@@ -1,0 +1,62 @@
+[[interfaces]]
+== Interfaces
+
+Every boundary another engineer or system touches is specified here, in full.
+If it is not in this chapter, it is not an interface — change it freely. If
+it is in this chapter, changing it is a breaking change.
+
+[[interfaces-conventions]]
+=== Conventions
+
+State the rules that apply to every interface table in this chapter:
+
+* widths are in bits unless a `Unit` column says otherwise,
+* directions are named from this system's point of view (`In` / `Out`),
+* reserved fields are zero on write and ignored on read unless stated,
+* all multi-byte quantities state their byte order once, here.
+
+NOTE: Byte order, reset values, and error signaling are the three interface
+details most often left implicit. This chapter leaves none of them implicit.
+
+[[interfaces-channels]]
+=== Channels
+
+One subsection per interface. The table is the contract; the prose explains
+only what the table cannot.
+
+.Command and status channel (template — adapt to this system)
+[cols="1,1,1,3",options="header"]
+|===
+| Name | Width | Dir | Description
+
+| `REQ_VALID`
+| 1
+| In
+| Strobe: the command word on `REQ_DATA` is valid this cycle
+
+| `REQ_DATA`
+| 32
+| In
+| Command word; encoding defined in <<programming-model>>
+
+| `RESP_VALID`
+| 1
+| Out
+| Strobe: `RESP_DATA` holds a completed result
+
+| `RESP_DATA`
+| 32
+| Out
+| Result word, or an error code from the <<design-errors,error taxonomy>>
+|===
+
+A second interface follows the same pattern. Add subsections as needed; each
+appears as a collapsible entry in the sidebar.
+
+[[interfaces-timing]]
+=== Timing and ordering
+
+State ordering guarantees in one paragraph: what may be reordered, what may
+not, and which operations act as ordering barriers. Trapping or error
+operations are observable side effects — they are never removed, speculated,
+or reordered across sequence points.
