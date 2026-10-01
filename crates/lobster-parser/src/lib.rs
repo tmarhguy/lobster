@@ -561,13 +561,17 @@ impl<'a> Parser<'a> {
                     match self.parse_expr(0) {
                         Some(e) => {
                             // Block-like expressions (`if`, `match`, `{ }`)
-                            // are statements without a `;`, like in Rust;
-                            // anything else without `;` is the block tail.
+                            // need no `;` as statements; in tail position
+                            // (nothing follows but `}`) they are the value.
                             let block_like = matches!(
                                 e.node,
                                 ExprKind::Block(_) | ExprKind::If { .. } | ExprKind::Match { .. }
                             );
-                            if self.eat(&TokenKind::Semi) || block_like {
+                            let ends_stmt = self.eat(&TokenKind::Semi)
+                                || (block_like
+                                    && !self.at(&TokenKind::CloseBrace)
+                                    && !self.at_end());
+                            if ends_stmt {
                                 stmts.push(Stmt::new(StmtKind::Expr(e), self.span_from(estart)));
                             } else {
                                 tail = Some(Box::new(e));
@@ -611,7 +615,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     true
                 };
-                let (name, span) = self.parse_ident("variable name")?;
+                let pat = self.parse_pat()?;
                 let ty = if self.eat(&TokenKind::Colon) {
                     Some(self.parse_ty()?)
                 } else {
@@ -625,8 +629,7 @@ impl<'a> Parser<'a> {
                 self.expect(&TokenKind::Semi, "`;`");
                 StmtKind::Let(LetStmt {
                     mutable,
-                    name,
-                    span,
+                    pat,
                     ty,
                     init,
                 })
@@ -963,17 +966,25 @@ impl<'a> Parser<'a> {
         let start = self.peek()?.span.start;
         let kind = self.peek_kind()?.clone();
         match kind {
-            TokenKind::Int => {
+            TokenKind::Int { .. } => {
                 let t = self.bump();
+                let suffix = t.number_suffix().map(str::to_string);
                 Some(Expr::new(
-                    ExprKind::Lit(Literal::Int(t.text.clone())),
+                    ExprKind::Lit(Literal::Int {
+                        text: t.text.clone(),
+                        suffix,
+                    }),
                     self.span_from(start),
                 ))
             }
-            TokenKind::Float => {
+            TokenKind::Float { .. } => {
                 let t = self.bump();
+                let suffix = t.number_suffix().map(str::to_string);
                 Some(Expr::new(
-                    ExprKind::Lit(Literal::Float(t.text.clone())),
+                    ExprKind::Lit(Literal::Float {
+                        text: t.text.clone(),
+                        suffix,
+                    }),
                     self.span_from(start),
                 ))
             }
@@ -1220,10 +1231,14 @@ impl<'a> Parser<'a> {
         }
         let kind = self.peek_kind()?.clone();
         match kind {
-            TokenKind::Int => {
+            TokenKind::Int { .. } => {
                 let t = self.bump();
+                let suffix = t.number_suffix().map(str::to_string);
                 Some(Pat::new(
-                    PatKind::Lit(Literal::Int(t.text.clone())),
+                    PatKind::Lit(Literal::Int {
+                        text: t.text.clone(),
+                        suffix,
+                    }),
                     self.span_from(start),
                 ))
             }
@@ -1231,6 +1246,17 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Some(Pat::new(
                     PatKind::Lit(Literal::Str(s)),
+                    self.span_from(start),
+                ))
+            }
+            TokenKind::Float { .. } => {
+                let t = self.bump();
+                let suffix = t.number_suffix().map(str::to_string);
+                Some(Pat::new(
+                    PatKind::Lit(Literal::Float {
+                        text: t.text.clone(),
+                        suffix,
+                    }),
                     self.span_from(start),
                 ))
             }
@@ -1258,11 +1284,12 @@ impl<'a> Parser<'a> {
             TokenKind::Ident => {
                 let t = self.bump();
                 let name = t.text.clone();
-                // `Name(...)` or multi-segment paths are variant patterns;
-                // a lone lowercase name is a binding.
+                // `Name(...)`, `Name {...}`, or multi-segment paths are
+                // variant/struct patterns; a lone lowercase name is a binding.
                 let is_variant = name.chars().next().is_some_and(|c| c.is_uppercase())
                     || self.at(&TokenKind::ColonColon)
-                    || self.at(&TokenKind::OpenParen);
+                    || self.at(&TokenKind::OpenParen)
+                    || self.at(&TokenKind::OpenBrace);
                 if !is_variant {
                     return Some(Pat::new(PatKind::Ident(name), self.span_from(start)));
                 }
@@ -1277,6 +1304,9 @@ impl<'a> Parser<'a> {
                             return None;
                         }
                     }
+                }
+                if self.eat(&TokenKind::OpenBrace) {
+                    return Some(self.parse_struct_pat(path, start));
                 }
                 let mut args = Vec::new();
                 if self.eat(&TokenKind::OpenParen) {
@@ -1304,6 +1334,38 @@ impl<'a> Parser<'a> {
                 None
             }
         }
+    }
+
+    /// Parse the `{ ... }` of a struct pattern; the `{` is consumed.
+    fn parse_struct_pat(&mut self, path: Vec<String>, start: u32) -> Pat {
+        let mut fields = Vec::new();
+        while !self.at(&TokenKind::CloseBrace) && !self.at_end() {
+            let (name, span) = match self.parse_ident("field name") {
+                Some(v) => v,
+                None => {
+                    self.synchronize(false);
+                    return Pat::new(PatKind::Struct { path, fields }, self.span_from(start));
+                }
+            };
+            // `x` shorthand binds `x`; `x: pat` matches a sub-pattern.
+            let pat = if self.eat(&TokenKind::Colon) {
+                match self.parse_pat() {
+                    Some(p) => p,
+                    None => {
+                        self.synchronize(false);
+                        return Pat::new(PatKind::Struct { path, fields }, self.span_from(start));
+                    }
+                }
+            } else {
+                Pat::new(PatKind::Ident(name.clone()), span)
+            };
+            fields.push(StructPatField { name, span, pat });
+            if !self.eat(&TokenKind::Comma) {
+                break;
+            }
+        }
+        self.expect(&TokenKind::CloseBrace, "`}`");
+        Pat::new(PatKind::Struct { path, fields }, self.span_from(start))
     }
 }
 
@@ -1483,6 +1545,31 @@ mod tests {
             &body.stmts[1].node_expr().node,
             ExprKind::Assign { .. }
         ));
+    }
+
+    #[test]
+    fn let_destructuring() {
+        let file = parse_ok("fn f() { let (a, b) = pair; let Point { x, y: q } = p; }");
+        let body = match &file.items[0].node {
+            ItemKind::Fn(f) => &f.body,
+            _ => panic!("expected fn"),
+        };
+        assert_eq!(body.stmts.len(), 2);
+        let StmtKind::Let(l0) = &body.stmts[0].node else {
+            panic!("expected let")
+        };
+        assert!(matches!(&l0.pat.node, PatKind::Tuple(p) if p.len() == 2));
+        let StmtKind::Let(l1) = &body.stmts[1].node else {
+            panic!("expected let")
+        };
+        let PatKind::Struct { path, fields } = &l1.pat.node else {
+            panic!("expected struct pat, got {:?}", l1.pat.node)
+        };
+        assert_eq!(path, &["Point"]);
+        assert_eq!(fields.len(), 2);
+        // `x` shorthand binds `x`.
+        assert!(matches!(&fields[0].pat.node, PatKind::Ident(n) if n == "x"));
+        assert!(matches!(&fields[1].pat.node, PatKind::Ident(n) if n == "q"));
     }
 
     // Helper: unwrap expression statements in tests.

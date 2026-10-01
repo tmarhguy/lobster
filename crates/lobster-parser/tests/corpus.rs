@@ -23,6 +23,26 @@ fn hello_lobster_parses_clean() {
 }
 
 #[test]
+fn every_example_parses_clean() {
+    // examples/ is the end-to-end contract: each file must lex and parse
+    // with zero diagnostics (type checking is asserted by `lobster check` runs
+    // and the sema suite; see crates/lobster-cli/tests/cli.rs).
+    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples");
+    let mut files: Vec<_> = std::fs::read_dir(&dir)
+        .expect("examples dir exists")
+        .map(|e| e.expect("entry").path())
+        .filter(|p| p.extension().is_some_and(|x| x == "lobster"))
+        .collect();
+    files.sort();
+    assert!(files.len() >= 6, "expected at least 6 examples");
+    for file in files {
+        let text = std::fs::read_to_string(&file).expect("read example");
+        let n = lex_and_parse(&text);
+        assert_eq!(n, 0, "{} has {n} diagnostics", file.display());
+    }
+}
+
+#[test]
 fn every_truncation_of_hello_terminates() {
     let text = include_str!("../../../examples/hello.lobster");
     // Byte-wise prefixes may split UTF-8; char-boundary prefixes only.

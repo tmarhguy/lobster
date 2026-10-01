@@ -205,15 +205,13 @@ pub enum StmtKind {
     Expr(Expr),
 }
 
-/// Let statement.
+/// Let statement: `let [mut] pat[: Ty] [= init];`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LetStmt {
     /// `true` for `let mut`.
     pub mutable: bool,
-    /// Bound name.
-    pub name: String,
-    /// Span of the name.
-    pub span: Span,
+    /// Bound pattern (name, tuple, or struct pattern).
+    pub pat: Pat,
     /// Declared type after `:`, if any.
     pub ty: Option<Ty>,
     /// Initializer after `=`, if any.
@@ -333,16 +331,45 @@ pub enum PatKind {
     },
     /// `(a, b)` tuple pattern.
     Tuple(Vec<Pat>),
+    /// `Point { x, y: q }` struct pattern.
+    Struct {
+        /// Path segments of the struct.
+        path: Vec<String>,
+        /// Fields in source order.
+        fields: Vec<StructPatField>,
+    },
 }
 
-/// Literal value.
+/// One field of a struct pattern: `x` (binds `x`) or `x: pat`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StructPatField {
+    /// Field name.
+    pub name: String,
+    /// Span of the name.
+    pub span: Span,
+    /// Sub-pattern (`Ident(name)` for the shorthand).
+    pub pat: Pat,
+}
+
+/// Literal value. Number spellings keep their raw text and suffix so the
+/// checker, not the parser, decides types and ranges.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
-    /// Integer with its source text (`10`, `0xff`, `1_000_000`).
-    /// The value is parsed on demand so lex/parse never fail on range.
-    Int(String),
-    /// Floating point with its source text.
-    Float(String),
+    /// Integer with its source text and optional suffix (`10`, `0xff`,
+    /// `42u64`).
+    Int {
+        /// Raw spelling including any suffix.
+        text: String,
+        /// Type suffix, if any.
+        suffix: Option<String>,
+    },
+    /// Floating point with its source text and optional suffix.
+    Float {
+        /// Raw spelling including any suffix.
+        text: String,
+        /// Type suffix, if any.
+        suffix: Option<String>,
+    },
     /// String contents with escapes resolved.
     Str(String),
     /// Character with escapes resolved.
@@ -438,4 +465,119 @@ pub enum TyKind {
     Tuple(Vec<Ty>),
     /// `()`.
     Unit,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lobster_source::{FileId, Span};
+
+    fn span() -> Span {
+        Span::new(FileId(0), 0, 1)
+    }
+
+    fn ident_expr(name: &str) -> Expr {
+        Expr::new(ExprKind::Path(vec![name.to_string()]), span())
+    }
+
+    #[test]
+    fn spanned_carries_node_and_span() {
+        let e = ident_expr("x");
+        assert_eq!(e.span, span());
+        assert!(matches!(e.node, ExprKind::Path(_)));
+    }
+
+    #[test]
+    fn precedence_shape_is_add_of_mul() {
+        // Mirrors the parser guarantee: `a + b * c` is ADD(a, MUL(b, c)).
+        let tree = Expr::new(
+            ExprKind::Binary {
+                op: BinOp::Add,
+                lhs: Box::new(ident_expr("a")),
+                rhs: Box::new(Expr::new(
+                    ExprKind::Binary {
+                        op: BinOp::Mul,
+                        lhs: Box::new(ident_expr("b")),
+                        rhs: Box::new(ident_expr("c")),
+                    },
+                    span(),
+                )),
+            },
+            span(),
+        );
+        let ExprKind::Binary {
+            op: BinOp::Add,
+            rhs,
+            ..
+        } = &tree.node
+        else {
+            panic!("expected add")
+        };
+        assert!(matches!(&rhs.node, ExprKind::Binary { op: BinOp::Mul, .. }));
+    }
+
+    #[test]
+    fn item_visibility() {
+        let f = Item::new(
+            ItemKind::Fn(FnItem {
+                is_public: true,
+                name: "f".to_string(),
+                generics: Vec::new(),
+                params: Vec::new(),
+                ret: None,
+                body: Block {
+                    stmts: Vec::new(),
+                    tail: None,
+                    span: span(),
+                },
+            }),
+            span(),
+        );
+        assert!(f.node.is_public());
+        let i = Item::new(
+            ItemKind::Import(ImportItem {
+                path: vec!["m".to_string()],
+            }),
+            span(),
+        );
+        assert!(!i.node.is_public());
+    }
+
+    #[test]
+    fn struct_pattern_fields() {
+        let pat = Pat::new(
+            PatKind::Struct {
+                path: vec!["Point".to_string()],
+                fields: vec![StructPatField {
+                    name: "x".to_string(),
+                    span: span(),
+                    pat: Pat::new(PatKind::Ident("x".to_string()), span()),
+                }],
+            },
+            span(),
+        );
+        let PatKind::Struct { path, fields } = &pat.node else {
+            panic!("expected struct pat")
+        };
+        assert_eq!(path, &["Point"]);
+        assert_eq!(fields.len(), 1);
+    }
+
+    #[test]
+    fn types_nest() {
+        let ty = Ty::new(
+            TyKind::Ref {
+                mutable: true,
+                inner: Box::new(Ty::new(
+                    TyKind::Path {
+                        segments: vec!["Point".to_string()],
+                        args: Vec::new(),
+                    },
+                    span(),
+                )),
+            },
+            span(),
+        );
+        assert!(matches!(ty.node, TyKind::Ref { mutable: true, .. }));
+    }
 }
