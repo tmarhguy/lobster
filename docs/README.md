@@ -9,9 +9,8 @@ engineering record. If two documents disagree, start with
 | Document | Use it for |
 |---|---|
 | [`status.md`](status.md) | Current facts, milestone tracker, and claim boundaries |
-| [`spec.md`](spec.md) | Evolving language specification (input: `../file.md`) |
+| [`spec.md`](spec.md) | Evolving language specification |
 | [`adr/`](adr/) | Architecture decision records |
-| [`../file.md`](../file.md) | Frozen 123-section project brief (intent, not status) |
 | [Tomato ISA](https://github.com/tmarhguy/tomato/tree/main/docs/isa) | Burned ISA contract Lobster's Tomato backend must target |
 
 The [root README](../README.md) is the visual front door. Subsystem guides

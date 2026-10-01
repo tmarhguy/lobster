@@ -2,7 +2,7 @@
 <p align="center"><strong>A statically typed systems programming language, optimizing compiler, adaptive runtime, and multi-target toolchain built from first principles.</strong></p>
 <p align="center">
   <a href="docs/status.md"><img alt="Status: active development" src="https://img.shields.io/badge/status-active%20development-2ea043"></a>
-  <a href="file.md"><img alt="Targets: 5" src="https://img.shields.io/badge/targets-x86--64_%7C_AArch64_%7C_RISC--V_%7C_WASM_%7C_Tomato32-011F5B"></a>
+  <a href="docs/spec.md"><img alt="Targets: 5" src="https://img.shields.io/badge/targets-x86--64_%7C_AArch64_%7C_RISC--V_%7C_WASM_%7C_Tomato32-011F5B"></a>
   <a href="https://www.rust-lang.org/"><img alt="Stage-0: Rust" src="https://img.shields.io/badge/stage--0-Rust-b7410e"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue"></a>
 </p>
@@ -13,8 +13,7 @@ and exploit unusual target capabilities — `a + b + c`, arbitrary LUT3 Boolean
 functions, dual-LUT packing, LUT → adder compositions, selectable carry
 sources, multi-output instructions — especially for Tomato.
 
-**Explore:** [project brief](file.md) ·
-[current status](docs/status.md) ·
+**Explore:** [current status](docs/status.md) ·
 [language spec](docs/spec.md) ·
 [decisions](docs/adr/) ·
 [Tomato ISA](https://github.com/tmarhguy/tomato/tree/main/docs/isa)
@@ -43,10 +42,8 @@ flowchart TD
 ## Authority and state boundaries
 
 - **Edit:** `docs/spec.md`, `docs/status.md`, crate sources, `examples/`.
-  These are the evolving authorities for implemented behavior.
-- **Frozen input:** [`file.md`](file.md) is the 123-section project brief.
-  It states intent; where it disagrees with `docs/`, the docs describe what
-  the repository actually proves.
+  These are the authorities for implemented behavior: they describe what
+  the repository actually proves, not what is planned.
 - **External authority:** the Tomato ISA lives in the sibling
   [tomato](https://github.com/tmarhguy/tomato) repository
   (`docs/isa/*.csv` plus `software/assembler.py`). Lobster carries no private
@@ -95,7 +92,6 @@ cargo test --workspace
 
 | Path | Purpose |
 |---|---|
-| [`file.md`](file.md) | Frozen 123-section project brief (intent, not status) |
 | [`docs/spec.md`](docs/spec.md) | Evolving language specification |
 | [`docs/status.md`](docs/status.md) | Current facts and milestone tracker |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
@@ -108,7 +104,7 @@ cargo test --workspace
 
 ## Roadmap
 
-Twenty milestone commits ([full list](file.md#114-twenty-primary-github-milestone-commits)),
+Twenty milestone commits (tracked in [docs/status.md](docs/status.md)),
 worked in order. This checkout completes **Commit 02**
 (`frontend: lexer, parser, AST, and recoverable syntax diagnostics`).
 Next: **Commit 03** — name resolution, scopes, type checking, compile-fail
@@ -136,8 +132,8 @@ do not cite it for present status unless a current guide confirms it.
 ## License and author
 
 MIT ([`LICENSE`](LICENSE)).
-Architecture and project by **Tyrone Marhguy**, Computer Engineering ’28,
-University of Pennsylvania.
+Architecture and project by **Tyrone Marhguy**, Computer Engineer,
+University of Pennsylvania, Junior, Class of 2028.
 
 [Contributing](CONTRIBUTING.md) · [security](SECURITY.md) ·
 [citation](CITATION.cff)

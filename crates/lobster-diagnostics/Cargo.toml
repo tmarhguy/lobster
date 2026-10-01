@@ -3,7 +3,7 @@ name = "lobster-diagnostics"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Lobster diagnostics: spanned errors, notes, suggestions, snapshot rendering (file.md section 21)"
+description = "Lobster diagnostics: spanned errors, notes, suggestions, snapshot rendering"
 
 [dependencies]
 lobster-source = { path = "../lobster-source" }

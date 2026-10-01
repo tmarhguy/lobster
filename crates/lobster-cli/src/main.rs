@@ -1,4 +1,4 @@
-//! `lobster` command-line interface (file.md section 4).
+//! `lobster` command-line interface.
 //!
 //! Commit 01 scope: real `check` (loads a file through the source manager
 //! and reports diagnostics), honest stubs for everything else. A subcommand
@@ -118,7 +118,7 @@ fn cmd_check(file: PathBuf) -> ExitCode {
 }
 
 fn not_implemented(name: &str) -> ExitCode {
-    eprintln!("error[LOBSTER-000]: '{name}' is not implemented yet (roadmap: file.md section 114)");
+    eprintln!("error[LOBSTER-000]: '{name}' is not implemented yet (roadmap: docs/status.md)");
     ExitCode::from(2)
 }
 

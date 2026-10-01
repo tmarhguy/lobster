@@ -1,12 +1,12 @@
-# 002 — macOS native first (deviates from file.md section 43 order)
+# 002 — macOS native first (backend order)
 
 - Status: accepted
 - Date: 2026-10-01
 
 ## Context
 
-file.md section 43 orders `x86_64-linux` before `x86_64-macos`; section 44
-targets `aarch64-linux`/`aarch64-macos`. The active dev machine is
+The original plan ordered `x86_64-linux` before `x86_64-macos`, with
+`aarch64-linux`/`aarch64-macos` following. The active dev machine is
 `aarch64-apple-darwin`, so native execution cannot be dogfooded until a
 macOS backend exists.
 
@@ -18,7 +18,7 @@ accordingly: Mach-O + macOS ABI/syscalls before ELF + System V.
 
 ## Alternatives
 
-- Follow file.md order literally: rejected — delays on-machine execution
+- Follow the original Linux-first order literally: rejected — delays on-machine execution
   and differential testing.
 - Interpreter/WASM-only until Linux backend matures: rejected — weakens
   the native dogfooding loop the prime directive demands.

@@ -1,4 +1,4 @@
-//! Lobster parser (file.md section 20).
+//! Lobster parser: recursive descent plus Pratt expressions, with recovery.
 //!
 //! Recursive descent for items/statements plus Pratt expressions, with
 //! recovery: every error is collected as a [`Diagnostic`] and parsing
@@ -1325,7 +1325,7 @@ const fn prefix_prec() -> u32 {
 
 /// Binding power and right-associativity of an infix operator.
 /// Assignment is the loosest (10) and right-associative; everything else is
-/// left-associative with the file.md section 20 example (`a + b * c` →
+/// left-associative with the spec example (`a + b * c` →
 /// `ADD(a, MUL(b, c))`) falling out of `*` binding tighter than `+`.
 fn infix_binding(op: &Infix) -> (u32, bool) {
     match op {
@@ -1376,7 +1376,7 @@ mod tests {
 
     #[test]
     fn precedence_follows_spec_example() {
-        // file.md section 20: `a + b * c` must be ADD(a, MUL(b, c)).
+        // `a + b * c` must be ADD(a, MUL(b, c)).
         let file = parse_ok("fn f() { a + b * c; }");
         let body = match &file.items[0].node {
             ItemKind::Fn(f) => &f.body,

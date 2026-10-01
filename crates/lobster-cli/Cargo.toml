@@ -3,7 +3,7 @@ name = "lobster-cli"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Lobster command-line interface (file.md section 4)"
+description = "Lobster command-line interface"
 default-run = "lobster"
 
 [[bin]]

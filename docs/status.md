@@ -3,21 +3,17 @@
 Last verified from repository sources: 2026-10-01.
 
 This file is the short, current factual backbone for Lobster documentation. It
-describes what the repository proves; it does not turn roadmap items in
-`file.md` into implementation claims.
+describes what the repository proves; it does not turn roadmap items
+into implementation claims.
 
 ## Canonical vocabulary
 
 - **Lobster** is the systems language and compiler ecosystem as a whole.
 - **`lobster`** is the command-line interface built from `crates/lobster-cli/`.
-- **file.md** means the frozen 123-section project brief at the repository
-  root. It states intent and the twenty milestone commits; it never
-  establishes present status.
 - **Tomato32** means the `tomato32-none` Lobster target. Its ISA authority lives
   in the sibling tomato repository (`docs/isa/*.csv`,
   `software/assembler.py`); Lobster carries no private opcode table.
-- **Commit NN** means the twenty primary milestone commits defined in
-  `file.md` section 114.
+- **Commit NN** means one of the twenty primary milestone commits tracked below.
 
 ## Current canonical facts
 
@@ -30,7 +26,7 @@ describes what the repository proves; it does not turn roadmap items in
 | CLI surface | All section-4 subcommands exist; `check` lexes, parses, and reports `E1xx` diagnostics, the rest exit 2 as declared stubs. | `crates/lobster-cli/src/main.rs`, `crates/lobster-cli/tests/cli.rs` |
 | Frontend | Lexer (`E100`–`E105`), Pratt parser (`E110`–`E112`), span-annotated AST; recovery plus corpus and no-panic tests. | `crates/lobster-lexer/`, `crates/lobster-parser/`, `crates/lobster-ast/` |
 | Execution | No program executes yet. `examples/hello.lobster` is a checked-in sample awaiting the Commit 04 interpreter. | `examples/hello.lobster` |
-| Native targets | None. Backend order is macOS-first per ADR 002 (deviates from `file.md` section 43). | `docs/adr/002-macos-first.md` |
+| Native targets | None. Backend order is macOS-first per ADR 002. | `docs/adr/002-macos-first.md` |
 | License | MIT. | `LICENSE`, crate manifests |
 
 ## Milestone tracker

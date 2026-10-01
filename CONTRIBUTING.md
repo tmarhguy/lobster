@@ -6,11 +6,12 @@ evidence-backed changes are easiest to review.
 ## Before opening a change
 
 - Start from the current canonical facts in [`docs/status.md`](docs/status.md)
-  and the [prime directive](docs/spec.md#2-prime-directive-filemd-section-1):
+  and the [prime directive](docs/spec.md#2-prime-directive):
   correct semantics first; fast wrong code is failure.
-- Keep roadmap claims (`file.md`) distinct from repository-backed status
+- Keep roadmap claims distinct from repository-backed status
   (`docs/status.md`). Do not describe a milestone as done because one example
-  compiles — see the feature completion gate in `file.md` section 112.
+  compiles — every feature needs implementation plus unit, negative,
+  integration, and documentation proof.
 - Do not rewrite dated material under `log/` as if it were current prose.
 - Do not include credentials, private device identifiers, downloaded
   toolchains, generated build trees (`target/`), or personal capture data.

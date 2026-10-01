@@ -1,4 +1,4 @@
-//! Lobster abstract syntax tree (file.md section 20).
+//! Lobster abstract syntax tree: span-annotated nodes close to the source surface.
 //!
 //! Every node that can appear in a diagnostic carries its [`Span`].
 //! The tree is intentionally close to the source surface: desugaring

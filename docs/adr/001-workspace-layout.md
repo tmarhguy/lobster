@@ -5,8 +5,8 @@
 
 ## Context
 
-file.md section 2 mandates Rust for the stage-0 compiler with our own
-frontend/HIR/MIR/SSA/optimizer/target framework, and section 111 suggests
+The stage-0 compiler is Rust with our own
+frontend/HIR/MIR/SSA/optimizer/target framework, organized into
 `compiler/`, `targets/`, `runtime/`, `tools/` groupings.
 
 ## Decision

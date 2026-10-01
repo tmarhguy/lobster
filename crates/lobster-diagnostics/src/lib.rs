@@ -1,4 +1,4 @@
-//! Lobster diagnostics (file.md section 21).
+//! Lobster diagnostics: stable codes, labeled spans, notes, and suggestions.
 //!
 //! Every diagnostic carries a stable [`DiagnosticCode`], a primary labeled
 //! span, optional secondary spans, notes, and an optional suggestion.

@@ -1,5 +1,4 @@
-//! Corpus and robustness tests for the frontend (file.md section 114,
-//! Commit 02 "tests/fuzzing").
+//! Corpus and robustness tests for the frontend (Commit 02 "tests/fuzzing").
 //!
 //! `cargo-fuzz` needs a nightly toolchain, which this machine does not
 //! have, so these tests provide the stable-toolchain equivalent: the

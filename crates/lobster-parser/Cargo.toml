@@ -3,7 +3,7 @@ name = "lobster-parser"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Lobster parser: recursive descent plus Pratt expressions (file.md section 20)"
+description = "Lobster parser: recursive descent plus Pratt expressions"
 
 [dependencies]
 lobster-source = { path = "../lobster-source" }

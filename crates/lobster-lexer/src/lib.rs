@@ -1,4 +1,4 @@
-//! Lobster lexer (file.md section 19).
+//! Lobster lexer: tokens, numbers, strings, and comments.
 //!
 //! Produces a flat [`Token`] stream plus [`Diagnostic`]s. The lexer never
 //! fails wholesale: on bad input it emits a diagnostic and recovers at the

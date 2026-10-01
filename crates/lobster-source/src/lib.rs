@@ -1,6 +1,6 @@
 //! Lobster source manager.
 //!
-//! Central source representation (file.md section 18).
+//! Central source representation: stable file IDs, spans, and line/column mapping.
 //!
 //! Invariants:
 //! - Every loaded file gets a stable [`FileId`] that never changes.
