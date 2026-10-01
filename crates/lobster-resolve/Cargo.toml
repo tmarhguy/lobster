@@ -1,0 +1,16 @@
+[package]
+name = "lobster-resolve"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Lobster name resolution: scopes, symbol tables, path resolution (spec section 22)"
+
+[dependencies]
+lobster-source = { path = "../lobster-source" }
+lobster-diagnostics = { path = "../lobster-diagnostics" }
+lobster-ast = { path = "../lobster-ast" }
+lobster-types = { path = "../lobster-types" }
+
+[dev-dependencies]
+lobster-lexer = { path = "../lobster-lexer" }
+lobster-parser = { path = "../lobster-parser" }
