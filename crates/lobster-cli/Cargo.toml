@@ -18,6 +18,9 @@ lobster-lexer = { path = "../lobster-lexer" }
 lobster-parser = { path = "../lobster-parser" }
 lobster-resolve = { path = "../lobster-resolve" }
 lobster-sema = { path = "../lobster-sema" }
+lobster-hir = { path = "../lobster-hir" }
+lobster-mir = { path = "../lobster-mir" }
+lobster-interp = { path = "../lobster-interp" }
 
 [dev-dependencies]
 assert_cmd = "2"

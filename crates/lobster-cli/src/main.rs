@@ -1,8 +1,8 @@
 //! `lobster` command-line interface.
 //!
-//! Commit 01 scope: real `check` (loads a file through the source manager
-//! and reports diagnostics), honest stubs for everything else. A subcommand
-//! that is not implemented yet exits with code 2 and says so — it never
+//! Commit 04 scope: real `check` (lex, parse, resolve, type-check) and real
+//! `run` (lower HIR/MIR and execute the reference interpreter). Every other
+//! subcommand is an honest stub: it exits with code 2 and says so — it never
 //! pretends to succeed.
 
 use clap::{Parser, Subcommand};
@@ -39,10 +39,13 @@ enum Command {
         /// Lobster source file to build.
         file: Option<PathBuf>,
     },
-    /// Run a Lobster program (interpreter lands in Commit 04).
+    /// Run a Lobster program with the reference interpreter.
     Run {
         /// Lobster source file to run.
-        file: Option<PathBuf>,
+        file: PathBuf,
+        /// Print the lowered MIR CFG and exit without running.
+        #[arg(long)]
+        dump_mir: bool,
     },
     /// Run tests.
     Test {},
@@ -128,6 +131,89 @@ fn cmd_check(file: PathBuf) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+fn cmd_run(file: PathBuf, dump_mir: bool) -> ExitCode {
+    let display = file.display().to_string();
+    let text = match std::fs::read_to_string(&file) {
+        Ok(t) => t,
+        Err(e) => {
+            let sources = SourceManager::new();
+            eprintln!("{}", file_open_error(&sources, &display, &e.to_string()));
+            return ExitCode::from(1);
+        }
+    };
+    let mut sources = SourceManager::new();
+    let id = sources.add_file(display.clone(), text);
+    let f = sources.get(id).expect("just added");
+    if f.text().is_empty() {
+        let span = sources.span(id, 0, 0).expect("empty file span");
+        let d = Diagnostic::error(
+            "LOBSTER-002",
+            "empty source file",
+            Label::primary(span, "nothing to run here"),
+        )
+        .with_note("write a Lobster program starting from examples/hello.lobster");
+        eprint!("{}", Renderer::new(&sources).render(&d));
+        return ExitCode::from(1);
+    }
+    let text = f.text().to_string();
+    let lexed = lobster_lexer::lex(&sources, id, &text);
+    let parsed = lobster_parser::parse(id, &lexed.tokens);
+    let renderer = Renderer::new(&sources);
+    for d in lexed.diagnostics.iter().chain(parsed.diagnostics.iter()) {
+        eprint!("{}", renderer.render(d));
+    }
+    if !lexed.diagnostics.is_empty() || !parsed.diagnostics.is_empty() {
+        let n = lexed.diagnostics.len() + parsed.diagnostics.len();
+        eprintln!("run failed: {n} error(s) in {display}");
+        return ExitCode::from(1);
+    }
+    let (resolved, resolve_diags) = lobster_resolve::resolve(&parsed.file);
+    let (program, tables, mut diags) = lobster_sema::check_program(&resolved, &parsed.file);
+    let mut all = resolve_diags;
+    all.append(&mut diags);
+    for d in &all {
+        eprint!("{}", renderer.render(d));
+    }
+    if !all.is_empty() {
+        eprintln!("run failed: {} error(s) in {display}", all.len());
+        return ExitCode::from(1);
+    }
+    let (hir, hir_diags) = lobster_hir::lower(&parsed.file, &resolved, &program, &tables);
+    for d in &hir_diags {
+        eprint!("{}", renderer.render(d));
+    }
+    if !hir_diags.is_empty() {
+        eprintln!("run failed: {} error(s) in {display}", hir_diags.len());
+        return ExitCode::from(1);
+    }
+    let mir = lobster_mir::lower(&hir);
+    if dump_mir {
+        print!("{}", lobster_mir::dump(&mir));
+        return ExitCode::SUCCESS;
+    }
+    match lobster_interp::run_main(&mir) {
+        Ok(outcome) => {
+            for line in &outcome.printed {
+                println!("{line}");
+            }
+            ExitCode::SUCCESS
+        }
+        Err(trap) => {
+            if let Some(span) = trap.span {
+                let d = Diagnostic::error(
+                    trap.code.as_str(),
+                    trap.message.clone(),
+                    Label::primary(span, "trap here"),
+                );
+                eprint!("{}", renderer.render(&d));
+            } else {
+                eprintln!("error[{}]: {}", trap.code.as_str(), trap.message);
+            }
+            ExitCode::from(1)
+        }
+    }
+}
+
 fn not_implemented(name: &str) -> ExitCode {
     eprintln!("error[LOBSTER-000]: '{name}' is not implemented yet (roadmap: docs/status.md)");
     ExitCode::from(2)
@@ -139,7 +225,7 @@ fn main() -> ExitCode {
         Command::New { .. } => not_implemented("lobster new"),
         Command::Check { file } => cmd_check(file),
         Command::Build { .. } => not_implemented("lobster build"),
-        Command::Run { .. } => not_implemented("lobster run"),
+        Command::Run { file, dump_mir } => cmd_run(file, dump_mir),
         Command::Test {} => not_implemented("lobster test"),
         Command::Bench {} => not_implemented("lobster bench"),
         Command::Fmt { .. } => not_implemented("lobster fmt"),
