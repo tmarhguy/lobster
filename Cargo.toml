@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "crates/lobster-source",
+    "crates/lobster-diagnostics",
+    "crates/lobster-cli",
+]
+resolver = "2"
+
+[workspace.lints.rust]
+warnings = "deny"
