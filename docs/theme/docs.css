@@ -1,0 +1,118 @@
+/* Override layer for the Asciidoctor default stylesheet.
+   Keep this file small: layout of the collapsible sidebar, disclosure
+   controls, active-section state, scroll independence, and minor readable
+   adjustments. Everything else comes from Asciidoctor's built-in CSS. */
+
+/* --- Sidebar scroll independence -------------------------------------
+   Asciidoctor's toc:left layout already fixes #toc; reaffirm it so the
+   sidebar and the document scroll independently of each other. */
+#toc.toc2 {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* --- Collapse/expand controls ---------------------------------------- */
+.toc-controls {
+  display: flex;
+  gap: 0.5em;
+  padding: 0.4em 0 0.6em;
+  font-size: 0.8em;
+}
+.toc-controls button {
+  background: none;
+  border: 1px solid #d0d0d0;
+  border-radius: 3px;
+  color: #555;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.15em 0.6em;
+}
+.toc-controls button:hover {
+  background: #f0f0f0;
+  color: #111;
+}
+
+/* --- Hierarchical collapsible entries ---------------------------------
+   Without JS every nested list renders expanded (graceful degradation).
+   With JS (.js-nav), collapsed items hide their child list. */
+#toc ul {
+  list-style: none;
+}
+#toc .toc-entry {
+  display: flex;
+  align-items: baseline;
+}
+#toc a {
+  overflow-wrap: anywhere;
+}
+.js-nav #toc li.collapsed > ul {
+  display: none;
+}
+
+/* Disclosure arrow: separate control so the title link keeps navigating. */
+.toc-toggle {
+  background: none;
+  border: 0;
+  color: #777;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 0.75em;
+  line-height: 1.5;
+  padding: 0 0.45em 0 0;
+  width: 1.6em;
+  text-align: center;
+}
+.toc-toggle:hover {
+  color: #111;
+}
+.toc-toggle:focus-visible,
+.toc-controls button:focus-visible,
+#toc a:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 1px;
+}
+
+/* --- Active section --------------------------------------------------- */
+/* Transparent default border so activating a link never shifts layout. */
+#toc ul a {
+  border-left: 3px solid transparent;
+  padding-left: 0.4em;
+}
+#toc a.toc-active {
+  color: #111;
+  font-weight: bold;
+  border-left-color: #1a73e8;
+}
+
+/* --- Readability adjustments ------------------------------------------ */
+#content {
+  max-width: 62em;
+}
+#content .imageblock img {
+  max-width: 100%;
+  height: auto;
+}
+/* Dense engineering tables and code blocks scroll instead of overflowing. */
+.tableblock table,
+.listingblock .content pre {
+  max-width: 100%;
+}
+.tableblock {
+  overflow-x: auto;
+}
+.listingblock .content pre {
+  overflow-x: auto;
+}
+
+/* --- Narrow screens ----------------------------------------------------
+   Desktop is primary. On small viewports the sidebar becomes a normal
+   in-flow block above the content so nothing overlaps or clips. */
+@media screen and (max-width: 767px) {
+  #toc.toc2 {
+    position: static !important;
+    width: auto !important;
+    max-height: 60vh;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 1.25em;
+  }
+}
