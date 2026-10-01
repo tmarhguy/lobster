@@ -109,6 +109,17 @@ fn cmd_check(file: PathBuf) -> ExitCode {
         eprintln!("check failed: {n} error(s) in {display}");
         return ExitCode::from(1);
     }
+    // Name resolution and type checking (Commit 03).
+    let (resolved, resolve_diags) = lobster_resolve::resolve(&parsed.file);
+    let mut diags = resolve_diags;
+    diags.extend(lobster_sema::check_file(&sources, &resolved, &parsed.file));
+    for d in &diags {
+        eprint!("{}", renderer.render(d));
+    }
+    if !diags.is_empty() {
+        eprintln!("check failed: {} error(s) in {display}", diags.len());
+        return ExitCode::from(1);
+    }
     println!(
         "ok: {display} ({} items, {} lines)",
         parsed.file.items.len(),

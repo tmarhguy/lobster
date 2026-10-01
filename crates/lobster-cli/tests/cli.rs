@@ -74,3 +74,25 @@ fn unimplemented_subcommands_exit_2() {
         .code(2)
         .stderr(predicates::str::contains("LOBSTER-000"));
 }
+
+#[test]
+fn check_type_error_fails_with_e210() {
+    let mut f = tempfile::NamedTempFile::with_suffix(".lobster").unwrap();
+    writeln!(f, "fn main() {{\n    let x: i32 = true;\n}}").unwrap();
+    lobster()
+        .args(["check", &f.path().display().to_string()])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("E210"));
+}
+
+#[test]
+fn check_unresolved_name_fails_with_e200() {
+    let mut f = tempfile::NamedTempFile::with_suffix(".lobster").unwrap();
+    writeln!(f, "fn main() {{\n    nosuchfn();\n}}").unwrap();
+    lobster()
+        .args(["check", &f.path().display().to_string()])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("E200"));
+}

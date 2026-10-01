@@ -16,6 +16,8 @@ lobster-source = { path = "../lobster-source" }
 lobster-diagnostics = { path = "../lobster-diagnostics" }
 lobster-lexer = { path = "../lobster-lexer" }
 lobster-parser = { path = "../lobster-parser" }
+lobster-resolve = { path = "../lobster-resolve" }
+lobster-sema = { path = "../lobster-sema" }
 
 [dev-dependencies]
 assert_cmd = "2"
