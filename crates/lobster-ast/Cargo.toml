@@ -1,0 +1,9 @@
+[package]
+name = "lobster-ast"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Lobster abstract syntax tree: span-annotated nodes (file.md section 20)"
+
+[dependencies]
+lobster-source = { path = "../lobster-source" }
