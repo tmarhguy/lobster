@@ -1,0 +1,10 @@
+[package]
+name = "lobster-types"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Lobster type representation: the semantic type language"
+
+[dependencies]
+lobster-source = { path = "../lobster-source" }
+lobster-ast = { path = "../lobster-ast" }

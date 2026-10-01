@@ -6,6 +6,9 @@ members = [
     "crates/lobster-lexer",
     "crates/lobster-parser",
     "crates/lobster-cli",
+    "crates/lobster-types",
+    "crates/lobster-resolve",
+    "crates/lobster-sema",
 ]
 resolver = "2"
 
