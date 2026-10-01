@@ -1,4 +1,4 @@
-<h1 align="center">Lobster</h1>
+<h1 align="center">Lobster - A Programming Language for Dual LUT3 CPU Architectures</h1>
 <p align="center"><strong>A statically typed systems programming language, optimizing compiler, adaptive runtime, and multi-target toolchain built from first principles.</strong></p>
 <p align="center">
   <a href="docs/status.md"><img alt="Status: active development" src="https://img.shields.io/badge/status-active%20development-2ea043"></a>
@@ -48,24 +48,25 @@ flowchart TD
   [tomato](https://github.com/tmarhguy/tomato) repository
   (`docs/isa/*.csv` plus `software/assembler.py`). Lobster carries no private
   copy of Tomato opcodes — same rule as Tomato's own assembler.
-- **Runtime state:** there is none yet. No interpreter, JIT, or hardware
-  execution exists in this repository; see the table below.
+- **Runtime state:** the reference interpreter executes MIR CFGs
+  (`lobster run`). No JIT or hardware execution exists yet; see the table below.
 
 ## What runs now
 
-Every claim is backed by the working tree at Commit 03. Anything else is
+Every claim is backed by the working tree at Commit 04. Anything else is
 roadmap, not status.
 
 | Layer | Current, repository-backed statement |
 |---|---|
-| Workspace | `cargo build --workspace` produces the `lobster` binary (nine crates) |
+| Workspace | `cargo build --workspace` produces the `lobster` binary (twelve crates) |
 | Source manager | Stable file IDs, spans, 1-based line/col; unit-tested incl. Unicode columns |
 | Diagnostics | `error[E021]`-style rendering with primary/secondary spans, notes, suggestions; snapshot-tested |
-| CLI | `lobster check <file>` lexes, parses, resolves, type-checks, and reports `ok` or `E1xx`/`E2xx`/`LOBSTER-00x`; all other subcommands exit 2 as honest stubs |
+| CLI | `lobster check <file>` lexes, parses, resolves, type-checks, and reports `ok` or `E1xx`/`E2xx`/`LOBSTER-00x`; `lobster run <file> [--dump-mir]` executes `main` via the reference interpreter and reports `TRAP-*` on failure; all other subcommands exit 2 as honest stubs |
 | Frontend | Lexer, Pratt parser, and span-annotated AST. `a + b * c` parses as `ADD(a, MUL(b, c))`; errors recover at `;`/`}` with `E1xx` codes; lexer/parser never panic (corpus + truncation + byte tests) |
 | Sema | Single-file name resolution (E200–E203) and bidirectional type checking (E210–E218): literal adoption, no implicit conversions, cast table, exhaustiveness, 14 compile-fail snapshots |
-| Examples | Six checked-in programs, all passing `lobster check`; `tomato_shapes.lobster` exercises the expression shapes from the verified Tomato catalog |
-| Interpreter → backend | Not implemented. HIR/MIR/interpreter land in Commit 04 |
+| HIR/MIR | Typed desugared HIR (`&&`/`||` → `if`); MIR CFG with explicit branches, `match` dispatch, index loops for `for`; `--dump-mir` prints the CFG |
+| Interpreter | Strict spec §§4–5 execution: wrapping ints, trapping `/`/`%` by zero, masked shifts, saturating `float as int`, trapping `u32 as char`, honest `TRAP-REF` for `&`/`*` |
+| Examples | Six checked-in programs, all passing `lobster check` and `lobster run`; `tomato_shapes.lobster` exercises the expression shapes from the verified Tomato catalog |
 
 ## See it, run it, inspect it
 
@@ -73,6 +74,7 @@ roadmap, not status.
 cargo build
 ./target/debug/lobster --help
 ./target/debug/lobster check examples/hello.lobster
+./target/debug/lobster run examples/hello.lobster
 ```
 
 Focused checks (same as CI):
@@ -108,17 +110,19 @@ cargo test --workspace
 | [`crates/lobster-types/`](crates/lobster-types/) | Semantic type language |
 | [`crates/lobster-resolve/`](crates/lobster-resolve/) | Name resolution |
 | [`crates/lobster-sema/`](crates/lobster-sema/) | Type checker + compile-fail suite |
+| [`crates/lobster-hir/`](crates/lobster-hir/) | Typed desugared HIR (Commit 04) |
+| [`crates/lobster-mir/`](crates/lobster-mir/) | CFG / basic blocks (Commit 04) |
+| [`crates/lobster-interp/`](crates/lobster-interp/) | Reference interpreter (Commit 04) |
 | [`crates/lobster-cli/`](crates/lobster-cli/) | `lobster` command-line interface |
-| [`examples/`](examples/) | Checked-in programs, all passing `lobster check` |
+| [`examples/`](examples/) | Checked-in programs, all passing `lobster check` and `lobster run` |
 | [`log/`](log/) | Dated engineering journal; history, not authority |
 
 ## Roadmap
 
 Twenty milestone commits (tracked in [docs/status.md](docs/status.md)),
-worked in order. This checkout completes **Commit 03**
-(`sema: name resolution, scopes, type checking, and compile-fail tests`).
-Next: **Commit 04** — typed HIR, MIR lowering, CFG infrastructure, reference
-interpreter. The flagship arc runs frontend → types → interpreter → SSA →
+worked in order. This checkout completes **Commit 04**
+(`typed HIR, MIR lowering, CFG infrastructure, reference interpreter`).
+Next: **Commit 05** — SSA + verifier. The flagship arc runs frontend → types → interpreter → SSA →
 optimizer → Machine IR → x86 → differential testing → RISC-V/WASM → AArch64
 → Tomato baseline → ADD3 → LUT synthesis → Dual-LUT packing → polymorphic
 instruction synthesis → toolchain → explorer/release.
