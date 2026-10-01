@@ -178,7 +178,7 @@ impl SourceFile {
     pub fn line_col(&self, offset: usize) -> Option<(usize, usize)> {
         let line = self.line_number(offset)?;
         let start = self.line_starts[line - 1];
-        let col = self.text[start..offset].chars().count() + 1;
+        let col = self.text.get(start..offset)?.chars().count() + 1;
         Some((line, col))
     }
 }

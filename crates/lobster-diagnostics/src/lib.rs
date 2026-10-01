@@ -229,8 +229,16 @@ impl<'a> Renderer<'a> {
             return d.primary.message.clone();
         }
         // Column offset in characters (matches SourceFile::line_col).
-        let prefix_chars = file.text()[range.start..start].chars().count();
-        let span_chars = file.text()[start..end].chars().count().max(1);
+        // `.get` hardening: the renderer must never panic, even on a
+        // mid-char span from a future frontend.
+        let prefix_chars = file
+            .text()
+            .get(range.start..start)
+            .map_or(0, |s| s.chars().count());
+        let span_chars = file
+            .text()
+            .get(start..end)
+            .map_or(1, |s| s.chars().count().max(1));
         format!(
             "{}{} {}",
             " ".repeat(prefix_chars),
